@@ -6,3 +6,6 @@ run: build
 
 test:
 	@go test ./...
+
+local-setup:
+	@docker-compose up --remove-orphans

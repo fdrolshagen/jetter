@@ -1,0 +1,25 @@
+{
+  "realm": "test-realm",
+  "enabled": true,
+  "users": [
+    {
+      "username": "test-user",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test-password"
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "test-client",
+      "secret": "test-secret",
+      "enabled": true,
+      "directAccessGrantsEnabled": true,
+      "publicClient": false
+    }
+  ]
+}
