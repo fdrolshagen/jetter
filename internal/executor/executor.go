@@ -54,6 +54,10 @@ func ExecuteRequest(r internal.Request) internal.Response {
 		return result
 	}
 
+	for key, value := range r.Headers {
+		req.Header.Set(key, value)
+	}
+
 	start := time.Now()
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

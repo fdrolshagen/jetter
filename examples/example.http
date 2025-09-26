@@ -3,6 +3,7 @@ GET http://localhost:8080/users
 
 ### GET Request 2
 GET http://localhost:8080/delay
+Authorization: Bearer {{$auth.token("auth-id")}}
 
 ### GET Request 3
 GET http://localhost:8080/users

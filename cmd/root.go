@@ -5,6 +5,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/fdrolshagen/jetter/internal"
 	"github.com/fdrolshagen/jetter/internal/executor"
+	"github.com/fdrolshagen/jetter/internal/inject"
 	"github.com/fdrolshagen/jetter/internal/parser"
 	"github.com/fdrolshagen/jetter/internal/reporter"
 	"github.com/spf13/cobra"
@@ -36,6 +37,7 @@ func Execute() {
 		"How long should the load test run (accepts duration format, e.g. 30s, 1m)")
 	rootCmd.Flags().BoolVar(&once, "once", false, "run the scenario exactly once (ignores concurrency and duration)")
 	rootCmd.Flags().StringVarP(&file, "file", "f", "", "Path to the .http file")
+	rootCmd.Flags().StringVarP(&file, "env", "e", "", "Path to the environment file")
 	rootCmd.MarkFlagRequired("file")
 
 	if err := rootCmd.Execute(); err != nil {
@@ -49,20 +51,38 @@ func run() int {
 	pending := "⏳"
 	success := "✔"
 
-	msg := "Initializing Scenario..."
+	msg := "Parsing Requests..."
 	fmt.Printf("%s %s", pending, msg)
 	requests, err := parser.ParseHttpFile("./examples/example.http")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
+
+	msg = "Reading Environment..."
+	fmt.Printf("%s %s", pending, msg)
+	env, err := parser.ParseEnv("./examples/http-client.env.json:local")
+	if err != nil {
+		fmt.Println(err)
+		return 1
+	}
+	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
+
+	msg = "Injecting Variables..."
+	fmt.Printf("%s %s", pending, msg)
+	err = inject.Auth(&requests, env)
+	if err != nil {
+		fmt.Println(err)
+		return 1
+	}
+	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
 
 	s := internal.Scenario{
 		Once:     once,
 		Requests: requests,
 		Duration: duration,
 	}
-	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
 
 	msg = "Running Scenario..."
 	fmt.Printf("%s %s", pending, msg)
