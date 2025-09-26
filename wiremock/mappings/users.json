@@ -1,0 +1,39 @@
+{
+  "mappings": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "/users"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": [
+          {
+            "name": "foobar"
+          },
+          {
+            "name": "barfoo"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "/delay"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\"ok\":true}",
+        "delayDistribution": {
+          "type": "lognormal",
+          "median": 80,
+          "sigma": 0.4
+        }
+      }
+    }
+  ]
+}
