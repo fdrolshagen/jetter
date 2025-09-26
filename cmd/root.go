@@ -21,12 +21,13 @@ var (
 func Execute() {
 	PrintBanner()
 
+	var exitCode int
 	rootCmd := &cobra.Command{
 		Use:   "jetter",
 		Short: "Jetter – a load test tool",
 		Long:  "Jetter runs load tests based on .http scenario files.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			run()
+			exitCode = run()
 			return nil
 		},
 	}
@@ -41,10 +42,10 @@ func Execute() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
+	os.Exit(exitCode)
 }
 
-func run() {
+func run() int {
 	pending := "⏳"
 	success := "✔"
 
@@ -69,4 +70,5 @@ func run() {
 	fmt.Printf("\r%s %s\n\n", color.GreenString(success), msg)
 
 	reporter.Report(result)
+	return map[bool]int{true: 1, false: 0}[result.AnyError]
 }
