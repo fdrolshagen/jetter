@@ -10,7 +10,7 @@ import (
 func Submit(s internal.Scenario) internal.Result {
 	result := internal.Result{Executions: make([]internal.Execution, 0)}
 
-	if s.Once {
+	if s.Once || s.Duration == 0 {
 		execution := ExecuteScenario(s)
 		result.Executions = append(result.Executions, execution)
 		return result

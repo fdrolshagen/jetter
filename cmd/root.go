@@ -7,13 +7,44 @@ import (
 	"github.com/fdrolshagen/jetter/internal/executor"
 	"github.com/fdrolshagen/jetter/internal/parser"
 	"github.com/fdrolshagen/jetter/internal/reporter"
+	"github.com/spf13/cobra"
 	"os"
 	"time"
+)
+
+var (
+	duration time.Duration
+	once     bool
+	file     string
 )
 
 func Execute() {
 	PrintBanner()
 
+	rootCmd := &cobra.Command{
+		Use:   "jetter",
+		Short: "Jetter – a load test tool",
+		Long:  "Jetter runs load tests based on .http scenario files.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			run()
+			return nil
+		},
+	}
+
+	rootCmd.Flags().DurationVarP(&duration, "duration", "d", 0,
+		"How long should the load test run (accepts duration format, e.g. 30s, 1m)")
+	rootCmd.Flags().BoolVar(&once, "once", false, "run the scenario exactly once (ignores concurrency and duration)")
+	rootCmd.Flags().StringVarP(&file, "file", "f", "", "Path to the .http file")
+	rootCmd.MarkFlagRequired("file")
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+}
+
+func run() {
 	pending := "⏳"
 	success := "✔"
 
@@ -26,9 +57,9 @@ func Execute() {
 	}
 
 	s := internal.Scenario{
-		Once:     false,
+		Once:     once,
 		Requests: requests,
-		Duration: 1 * time.Second,
+		Duration: duration,
 	}
 	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
 
