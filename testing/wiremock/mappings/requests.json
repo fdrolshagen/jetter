@@ -34,6 +34,15 @@
           "sigma": 0.4
         }
       }
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "/put"
+      },
+      "response": {
+        "status": 204
+      }
     }
   ]
 }

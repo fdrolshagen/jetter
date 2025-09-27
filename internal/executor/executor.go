@@ -1,9 +1,9 @@
 package executor
 
 import (
+	"bytes"
 	"github.com/fdrolshagen/jetter/internal"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -48,7 +48,7 @@ func ExecuteScenario(s internal.Scenario) internal.Execution {
 
 func ExecuteRequest(r internal.Request) internal.Response {
 	result := internal.Response{Error: nil, Name: r.Name}
-	req, err := http.NewRequest(r.Method, r.Url, strings.NewReader(r.Body))
+	req, err := http.NewRequest(r.Method, r.Url, bytes.NewBuffer([]byte(r.Body)))
 	if err != nil {
 		result.Error = err
 		return result

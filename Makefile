@@ -2,7 +2,7 @@ build:
 	@go build -o bin/jetter main.go
 
 run: build
-	@bin/jetter -f ./examples/example.http
+	@bin/jetter -f ./examples/example.http -e ./examples/http-client.env.json:local
 
 test:
 	@go test ./...

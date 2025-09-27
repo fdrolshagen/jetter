@@ -112,10 +112,10 @@ func ParseHttp(r io.Reader) ([]internal.Request, error) {
 
 			if ignoreLine(line) {
 				state = StateIgnoredBodyPartRead
-				break
+				continue
 			}
 
-			request.Body += line
+			request.Body += line + "\n"
 			state = StateBodyPartRead
 		default:
 			return nil, fmt.Errorf("parsing error: invalid internal state")

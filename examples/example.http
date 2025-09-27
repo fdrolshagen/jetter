@@ -1,5 +1,13 @@
-### GET Request 1
-GET http://localhost:8080/users
+
+### PUT Request 1
+PUT http://localhost:8080/put
+Authorization: Bearer {{$auth.token("auth-id")}}
+Content-Type: application/json
+
+{
+  "username": "FOOBAR",
+  "email": "foobar@test.com"
+}
 
 ### GET Request 2
 GET http://localhost:8080/delay

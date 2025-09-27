@@ -17,6 +17,7 @@ var (
 	duration time.Duration
 	once     bool
 	file     string
+	envPath  string
 )
 
 func Execute() {
@@ -37,7 +38,7 @@ func Execute() {
 		"How long should the load test run (accepts duration format, e.g. 30s, 1m)")
 	rootCmd.Flags().BoolVar(&once, "once", false, "run the scenario exactly once (ignores concurrency and duration)")
 	rootCmd.Flags().StringVarP(&file, "file", "f", "", "Path to the .http file")
-	rootCmd.Flags().StringVarP(&file, "env", "e", "", "Path to the environment file")
+	rootCmd.Flags().StringVarP(&envPath, "env", "e", "", "Path to the environment file")
 	rootCmd.MarkFlagRequired("file")
 
 	if err := rootCmd.Execute(); err != nil {
@@ -53,7 +54,7 @@ func run() int {
 
 	msg := "Parsing Requests..."
 	fmt.Printf("%s %s", pending, msg)
-	requests, err := parser.ParseHttpFile("./examples/example.http")
+	requests, err := parser.ParseHttpFile(file)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -62,7 +63,7 @@ func run() int {
 
 	msg = "Reading Environment..."
 	fmt.Printf("%s %s", pending, msg)
-	env, err := parser.ParseEnv("./examples/http-client.env.json:local")
+	env, err := parser.ParseEnv(envPath)
 	if err != nil {
 		fmt.Println(err)
 		return 1
