@@ -60,12 +60,10 @@ func GetToken(auth parser.AuthConfig) (string, error) {
 		return "", fmt.Errorf("unsupported auth type: %s", auth.Type)
 	}
 
-	form := url.Values{}
-	form.Set("grant_type", strings.ToLower(auth.GrantType))
-	form.Set("client_id", auth.ClientID)
-	form.Set("client_secret", auth.ClientSecret)
-	form.Set("username", auth.Username)
-	form.Set("password", auth.Password)
+	form, err := getFormValues(auth)
+	if err != nil {
+		return "", err
+	}
 
 	req, err := http.NewRequest("POST", auth.TokenURL, bytes.NewBufferString(form.Encode()))
 	if err != nil {
@@ -91,4 +89,39 @@ func GetToken(auth parser.AuthConfig) (string, error) {
 	}
 
 	return tr.AccessToken, nil
+}
+
+func getFormValues(auth parser.AuthConfig) (url.Values, error) {
+	form := url.Values{}
+
+	switch auth.GrantType {
+	case "Password":
+		if auth.Username == "" || auth.Password == "" {
+			return nil, fmt.Errorf("username and password required for password grant")
+		}
+		form.Set("grant_type", "password")
+		form.Set("username", auth.Username)
+		form.Set("password", auth.Password)
+		form.Set("client_id", auth.ClientID)
+		if auth.ClientSecret != "" {
+			form.Set("client_secret", auth.ClientSecret)
+		}
+
+	case "Client Credentials":
+		form.Set("grant_type", "client_credentials")
+		form.Set("client_id", auth.ClientID)
+		if auth.ClientSecret == "" {
+			return nil, fmt.Errorf("client_secret required for client_credentials grant")
+		}
+		form.Set("client_secret", auth.ClientSecret)
+
+	default:
+		return nil, fmt.Errorf("unsupported grant type: %s", auth.GrantType)
+	}
+
+	if auth.Scope != "" {
+		form.Set("scope", auth.Scope)
+	}
+
+	return form, nil
 }

@@ -15,6 +15,7 @@ type AuthConfig struct {
 	ClientSecret string `json:"Client Secret"`
 	Username     string `json:"Username"`
 	Password     string `json:"Password"`
+	Scope        string `json:"Scope"`
 }
 
 type AuthMap map[string]AuthConfig
