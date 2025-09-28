@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fdrolshagen/jetter/internal"
-	"github.com/fdrolshagen/jetter/internal/parser"
 	"io"
 	"net/http"
 	"net/url"
@@ -20,7 +19,7 @@ type TokenResponse struct {
 	TokenType    string `json:"token_type"`
 }
 
-func Auth(requests *[]internal.Request, env parser.Environment) error {
+func Auth(requests *[]internal.Request, env internal.Environment) error {
 	tokens := make(map[string]string)
 	for _, request := range *requests {
 		for key, value := range request.Headers {
@@ -55,7 +54,7 @@ func Auth(requests *[]internal.Request, env parser.Environment) error {
 	return nil
 }
 
-func GetToken(auth parser.AuthConfig) (string, error) {
+func GetToken(auth internal.AuthConfig) (string, error) {
 	if auth.Type != "OAuth2" {
 		return "", fmt.Errorf("unsupported auth type: %s", auth.Type)
 	}
@@ -91,7 +90,7 @@ func GetToken(auth parser.AuthConfig) (string, error) {
 	return tr.AccessToken, nil
 }
 
-func getFormValues(auth parser.AuthConfig) (url.Values, error) {
+func getFormValues(auth internal.AuthConfig) (url.Values, error) {
 	form := url.Values{}
 
 	switch auth.GrantType {

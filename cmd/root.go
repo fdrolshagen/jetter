@@ -72,7 +72,7 @@ func run() int {
 
 	msg = "Injecting Variables..."
 	fmt.Printf("%s %s", pending, msg)
-	err = inject.Auth(&requests, env)
+	err = inject.Inject(&requests, env)
 	if err != nil {
 		fmt.Println(err)
 		return 1
