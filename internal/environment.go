@@ -48,7 +48,6 @@ func (e *Environment) UnmarshalJSON(data []byte) error {
 		if err := json.Unmarshal(v, &s); err != nil {
 			return fmt.Errorf("key %s is not a string: %w", k, err)
 		}
-		fmt.Println("Adding", k, s)
 		e.Variables[k] = s
 	}
 

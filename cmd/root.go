@@ -52,9 +52,9 @@ func run() int {
 	pending := "⏳"
 	success := "✔"
 
-	msg := "Parsing Requests..."
+	msg := "Parsing .http file..."
 	fmt.Printf("%s %s", pending, msg)
-	requests, err := parser.ParseHttpFile(file)
+	collection, err := parser.ParseHttpFile(file)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -72,7 +72,7 @@ func run() int {
 
 	msg = "Injecting Variables..."
 	fmt.Printf("%s %s", pending, msg)
-	err = inject.Inject(&requests, env)
+	err = inject.Inject(&collection, env)
 	if err != nil {
 		fmt.Println(err)
 		return 1
@@ -81,7 +81,7 @@ func run() int {
 
 	s := internal.Scenario{
 		Once:     once,
-		Requests: requests,
+		Requests: collection.Requests,
 		Duration: duration,
 	}
 

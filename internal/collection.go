@@ -1,0 +1,72 @@
+package internal
+
+import (
+	"fmt"
+	"github.com/fdrolshagen/jetter/internal/random"
+	"regexp"
+)
+
+type Request struct {
+	Name    string
+	Method  string
+	Url     string
+	Headers map[string]string
+	Body    string
+}
+
+type Collection struct {
+	Requests  []Request
+	Variables map[string]string
+}
+
+var funcRegex = regexp.MustCompile(`\{\{\s*\$([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\((.*?)\)\s*}}`)
+
+func (c *Collection) ResolveVariables() error {
+	for key, val := range c.Variables {
+		resolved, err := replaceFunctions(val, key)
+		if err != nil {
+			return err
+		}
+		c.Variables[key] = resolved
+	}
+	return nil
+}
+
+func replaceFunctions(input, varName string) (string, error) {
+	result := ""
+	lastIndex := 0
+
+	matches := funcRegex.FindAllStringSubmatchIndex(input, -1)
+	for _, match := range matches {
+		start, end := match[0], match[1]
+		nsStart, nsEnd := match[2], match[3]
+		funcStart, funcEnd := match[4], match[5]
+		argStart, argEnd := match[6], match[7]
+
+		result += input[lastIndex:start]
+
+		namespace := input[nsStart:nsEnd]
+		funcName := input[funcStart:funcEnd]
+		arg := input[argStart:argEnd]
+
+		var out string
+		var err error
+
+		switch namespace {
+		case "random":
+			out, err = random.Execute(funcName, arg)
+		default:
+			return "", fmt.Errorf("error in variable '%s': unsupported namespace '%s'", varName, namespace)
+		}
+
+		if err != nil {
+			return "", fmt.Errorf("error in variable '%s': %v", varName, err)
+		}
+
+		result += out
+		lastIndex = end
+	}
+
+	result += input[lastIndex:]
+	return result, nil
+}

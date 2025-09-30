@@ -24,18 +24,19 @@ const (
 
 var methods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
 
-func ParseHttpFile(filename string) ([]internal.Request, error) {
+func ParseHttpFile(filename string) (internal.Collection, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return internal.Collection{}, err
 	}
 	defer file.Close()
 
 	return ParseHttp(file)
 }
 
-func ParseHttp(r io.Reader) ([]internal.Request, error) {
+func ParseHttp(r io.Reader) (internal.Collection, error) {
 	var requests []internal.Request
+	var vars = map[string]string{}
 
 	state := StateParsingStarted
 	lineCounter := 0
@@ -49,7 +50,17 @@ func ParseHttp(r io.Reader) ([]internal.Request, error) {
 
 		switch state {
 		case StateParsingStarted:
-			if strings.HasPrefix(line, "###") {
+			if strings.HasPrefix(line, "@") {
+				parts := strings.Split(line, "=")
+				if len(parts) != 2 {
+					return internal.Collection{}, fmt.Errorf("parsing error: invalid variable definition at line %d", lineCounter)
+				}
+				key := strings.TrimSpace(parts[0])
+				key = strings.TrimLeft(key, "@")
+				value := strings.TrimSpace(parts[1])
+
+				vars[key] = value
+			} else if strings.HasPrefix(line, "###") {
 				request.Name = getName(line, len(requests)+1)
 				state = StateInitialConfigLineRead
 			}
@@ -64,7 +75,7 @@ func ParseHttp(r io.Reader) ([]internal.Request, error) {
 				request.Method = parts[0]
 				request.Url = parts[1]
 			default:
-				return nil, fmt.Errorf("parsing error: invalid request at line %d", lineCounter)
+				return internal.Collection{}, fmt.Errorf("parsing error: invalid request at line %d", lineCounter)
 			}
 
 			state = StateHttpConfigLineRead
@@ -93,7 +104,7 @@ func ParseHttp(r io.Reader) ([]internal.Request, error) {
 
 			parts := strings.SplitN(line, ":", 2)
 			if len(parts) != 2 {
-				return nil, fmt.Errorf("parsing error: invalid header at line %d", lineCounter)
+				return internal.Collection{}, fmt.Errorf("parsing error: invalid header at line %d", lineCounter)
 			}
 			request.Headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 
@@ -118,13 +129,16 @@ func ParseHttp(r io.Reader) ([]internal.Request, error) {
 			request.Body += line + "\n"
 			state = StateBodyPartRead
 		default:
-			return nil, fmt.Errorf("parsing error: invalid internal state")
+			return internal.Collection{}, fmt.Errorf("parsing error: invalid internal state")
 		}
 
 	}
 
 	appendAndReset(&requests, &request)
-	return requests, nil
+	return internal.Collection{
+		Requests:  requests,
+		Variables: vars,
+	}, nil
 }
 
 func ignoreLine(line string) bool {
