@@ -1,0 +1,82 @@
+{
+  "mappings":[
+    {
+      "request": {
+        "method": "GET",
+        "url": "/users",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": [
+          { "id": "1", "username": "user1", "email": "user1@test.com" },
+          { "id": "2", "username": "user2", "email": "user2@test.com" }
+        ],
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/users",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          },
+          "Content-Type": {
+            "equalTo": "application/json"
+          }
+        },
+        "bodyPatterns": [
+          { "matchesJsonPath": "$.username" },
+          { "matchesJsonPath": "$.email" }
+        ]
+      },
+      "response": {
+        "status": 201,
+        "jsonBody": { "id": "123", "username": "username", "email": "foobar@test.com" },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/users/.*",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": { "id": "123", "username": "username", "email": "foobar@test.com" },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "urlPathPattern": "/users/.*",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 204
+      }
+    }
+  ]
+}

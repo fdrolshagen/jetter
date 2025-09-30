@@ -1,17 +1,23 @@
+@tsid = 0{{$random.hexadecimal(12)}}
 
-### PUT Request 1
-PUT http://localhost:8080/put
+### GET /users - get all users
+GET http://localhost:8080/users
+Authorization: Bearer {{$auth.token("auth-id")}}
+
+### POST /users - create user
+POST http://localhost:8080/users
 Authorization: Bearer {{$auth.token("auth-id")}}
 Content-Type: application/json
 
 {
-  "username": "FOOBAR",
+  "username": "username",
   "email": "foobar@test.com"
 }
 
-### GET Request 2
-GET http://localhost:8080/delay
+### GET /users/{tsid} - get a user by id
+GET http://localhost:8080/users/{{tsid}}
 Authorization: Bearer {{$auth.token("auth-id")}}
 
-### GET Request 3
-GET http://localhost:8080/users
+### DELETE /users/{tsid} - delete a user by id
+DELETE http://localhost:8080/users/{{tsid}}
+Authorization: Bearer {{$auth.token("auth-id")}}
