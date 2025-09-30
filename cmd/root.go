@@ -56,7 +56,7 @@ func run() int {
 	fmt.Printf("%s %s", pending, msg)
 	collection, err := parser.ParseHttpFile(file)
 	if err != nil {
-		fmt.Println(err)
+		PrintError(err)
 		os.Exit(1)
 	}
 	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
@@ -65,7 +65,7 @@ func run() int {
 	fmt.Printf("%s %s", pending, msg)
 	env, err := parser.ParseEnv(envPath)
 	if err != nil {
-		fmt.Println(err)
+		PrintError(err)
 		return 1
 	}
 	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
@@ -74,7 +74,7 @@ func run() int {
 	fmt.Printf("%s %s", pending, msg)
 	err = inject.Inject(&collection, env)
 	if err != nil {
-		fmt.Println(err)
+		PrintError(err)
 		return 1
 	}
 	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
@@ -92,4 +92,10 @@ func run() int {
 
 	reporter.Report(result)
 	return map[bool]int{true: 1, false: 0}[result.AnyError]
+}
+
+func PrintError(err error) {
+	if err != nil {
+		fmt.Printf("\n\n❌ Error: %s\n", err.Error())
+	}
 }
