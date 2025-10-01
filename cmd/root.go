@@ -80,9 +80,8 @@ func run() int {
 	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
 
 	s := internal.Scenario{
-		Once:     once,
-		Requests: collection.Requests,
-		Duration: duration,
+		Collection: &collection,
+		Duration:   duration,
 	}
 
 	msg = "Running Scenario..."

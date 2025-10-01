@@ -21,15 +21,16 @@ type Collection struct {
 
 var funcRegex = regexp.MustCompile(`\{\{\s*\$([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\((.*?)\)\s*}}`)
 
-func (c *Collection) ResolveVariables() error {
-	for key, val := range c.Variables {
-		resolved, err := replaceFunctions(val, key)
+func (c *Collection) EvaluateVariables() (map[string]string, error) {
+	resolved := make(map[string]string, len(c.Variables))
+	for k, v := range c.Variables {
+		r, err := replaceFunctions(v, k)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("error in variable '%s': %w", k, err)
 		}
-		c.Variables[key] = resolved
+		resolved[k] = r
 	}
-	return nil
+	return resolved, nil
 }
 
 func replaceFunctions(input, varName string) (string, error) {

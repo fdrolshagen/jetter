@@ -9,17 +9,7 @@ import (
 func Inject(collection *internal.Collection, env internal.Environment) error {
 	requests := &collection.Requests
 
-	err := collection.ResolveVariables()
-	if err != nil {
-		return err
-	}
-
-	for i := range collection.Requests {
-		req := &collection.Requests[i]
-		req.Url = replaceVars(req.Url, collection.Variables)
-	}
-
-	err = Auth(requests, env)
+	err := Auth(requests, env)
 	if err != nil {
 		return err
 	}

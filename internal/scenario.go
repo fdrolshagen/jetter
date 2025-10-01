@@ -3,8 +3,7 @@ package internal
 import "time"
 
 type Scenario struct {
-	Once        bool
-	Requests    []Request
+	Collection  *Collection
 	Concurrency int
 	Duration    time.Duration
 }

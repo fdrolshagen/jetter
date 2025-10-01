@@ -10,7 +10,7 @@ import (
 func Submit(s internal.Scenario) internal.Result {
 	result := internal.Result{Executions: make([]internal.Execution, 0)}
 
-	if s.Once || s.Duration == 0 {
+	if s.Duration == 0 {
 		execution := ExecuteScenario(s)
 		result.Executions = append(result.Executions, execution)
 		if execution.AnyError {
@@ -33,9 +33,17 @@ func Submit(s internal.Scenario) internal.Result {
 }
 
 func ExecuteScenario(s internal.Scenario) internal.Execution {
-	responses := make([]internal.Response, 0)
+	requests, err := Evaluate(s.Collection)
+	if err != nil {
+		return internal.Execution{
+			Responses: nil,
+			AnyError:  true,
+		}
+	}
+
+	responses := make([]internal.Response, 0, len(requests))
 	anyError := false
-	for index, request := range s.Requests {
+	for index, request := range requests {
 		response := ExecuteRequest(request)
 		response.Index = index
 		responses = append(responses, response)
@@ -43,6 +51,7 @@ func ExecuteScenario(s internal.Scenario) internal.Execution {
 			anyError = true
 		}
 	}
+
 	return internal.Execution{Responses: responses, AnyError: anyError}
 }
 
