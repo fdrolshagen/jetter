@@ -15,7 +15,6 @@ import (
 
 var (
 	duration time.Duration
-	once     bool
 	file     string
 	envPath  string
 )
@@ -36,7 +35,6 @@ func Execute() {
 
 	rootCmd.Flags().DurationVarP(&duration, "duration", "d", 0,
 		"How long should the load test run (accepts duration format, e.g. 30s, 1m)")
-	rootCmd.Flags().BoolVar(&once, "once", false, "run the scenario exactly once (ignores concurrency and duration)")
 	rootCmd.Flags().StringVarP(&file, "file", "f", "", "Path to the .http file")
 	rootCmd.Flags().StringVarP(&envPath, "env", "e", "", "Path to the environment file")
 	rootCmd.MarkFlagRequired("file")
