@@ -54,7 +54,7 @@ jetter --file examples/example.http --env examples/http-client.env.json:local
 
 ## Example .http File
 
-```http request
+```text
 ### Create User
 POST {{URL}}/users
 Authorization: Bearer {{$auth.token("auth-id")}}
@@ -106,7 +106,7 @@ You can define **[in-place variables](https://www.jetbrains.com/help/idea/http-c
 
 **Usage**
 
-```http request
+```text
 @ID = 123
 @TOKEN = abc
 
@@ -131,7 +131,7 @@ Jetter currently supports the following dynamic variables:
 
 **Usage**
 
-```http request
+```text
 @UUID = {{$random.uuid}}
 
 ### Get User
