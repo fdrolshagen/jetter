@@ -157,7 +157,7 @@ Jetter supports **[Oauth2 authentication](https://www.jetbrains.com/help/idea/oa
 make local-setup
 ```
 
-- Access Wiremock at `http://localhost:8081` and Keycloak at `http://localhost:8080`.
+- Access Wiremock at `http://localhost:8080` and Keycloak at `http://localhost:8081`.
 - Use the `examples/http-client.env.json` for testing authentication and API calls.
 
 ```sh
