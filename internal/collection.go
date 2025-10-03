@@ -71,3 +71,15 @@ func replaceFunctions(input, varName string) (string, error) {
 	result += input[lastIndex:]
 	return result, nil
 }
+
+func (c *Collection) MergeEnvironmentVariables(env Environment) {
+	if c.Variables == nil {
+		c.Variables = make(map[string]string)
+	}
+	for k, v := range env.Variables {
+		// collection
+		if _, exists := c.Variables[k]; !exists {
+			c.Variables[k] = v
+		}
+	}
+}

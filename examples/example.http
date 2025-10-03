@@ -1,11 +1,11 @@
 @tsid = 0{{$random.hexadecimal(12)}}
 
 ### GET /users - get all users
-GET http://localhost:8080/users
+GET {{URL}}/users
 Authorization: Bearer {{$auth.token("auth-id")}}
 
 ### POST /users - create user
-POST http://localhost:8080/users
+POST {{URL}}/users
 Authorization: Bearer {{$auth.token("auth-id")}}
 Content-Type: application/json
 
@@ -15,9 +15,9 @@ Content-Type: application/json
 }
 
 ### GET /users/{tsid} - get a user by id
-GET http://localhost:8080/users/{{tsid}}
+GET {{URL}}/users/{{tsid}}
 Authorization: Bearer {{$auth.token("auth-id")}}
 
 ### DELETE /users/{tsid} - delete a user by id
-DELETE http://localhost:8080/users/{{tsid}}
+DELETE {{URL}}/users/{{tsid}}
 Authorization: Bearer {{$auth.token("auth-id")}}

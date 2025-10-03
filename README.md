@@ -1,81 +1,149 @@
-**:exclamation: This project is under construction and has not yet published a working version**
+# 🚀 Jetter
 
-#  :bulb: feature backlog
+**Jetter** is a light-weight load testing and API scenario runner for HTTP services. It uses a subset of the IntelliJ `.http` file syntax and supports environment variables, authentication, and more.
 
-## command line arguments
+> **:exclamation: This project is under construction and has not yet published a working version.**
 
-command line arguments should be parsed using an available library
+---
 
-:white_check_mark: --help [-h]         : print available command line arguments and explanation
+## ✨ Features
+- Parse and run `.http` scenario files
+- Intellij compatible features and syntax
+  - Environment variables
+  - Inline variables
+  - Magic variables
+  - Multiple requests per file
+  - Authentication hooks (OAuth2)
+- Duration-based load testing or just once execution
 
---concurrency [-c]  : how many threads should be used to fire requests
+---
 
-:white_check_mark: --duration [-d]     : how long should the load test run
+## ⚡ Quick Start
+```sh
+jetter --file examples/example.http --env examples/http-client.env.json:local
+```
 
-:white_check_mark: --once              : just execute a single scenario run, ignores concurrency and duration
+---
 
-:white_check_mark: --file [-f]         : the .http file to use, format uses a subset of intellij http syntax
+## 🛠️ Command Line Flags
 
-:white_check_mark: --env [-e]          : file to use as variable input, format ``-e <file>:<env-key>``, ie.``-e client.env.json:service-dev``
+| Flag                | Alias | Description                                                                                  |
+|---------------------|-------|----------------------------------------------------------------------------------------------|
+| `--help`            | `-h`  | Print available command line arguments and explanation                                        |
+| `--file`            | `-f`  | Path to the .http file (required)                                                            |
+| `--env`             | `-e`  | Path to the environment file. Format: `-e <file>:<env-key>`                                  |
+| `--duration`        | `-d`  | How long should the load test run (e.g. `30s`, `1m`)                                         |
 
---output [-o]       : output file/format, default is output format is human friendly tabular output, machine-readable options should be available with  "-o json" or "-o yaml"
+---
 
-## report format
+## 📄 Example .http File
 
-- add reporter for json and yaml output
-- maybe use interface for multiple reporters "func Report(r internal.Result)"
-- -o syntax similar to kubectl
+```http
+### Create User
+POST {{URL}}/users
+Authorization: Bearer {{$auth.token("auth-id")}}
+Content-Type: application/json
 
-## :white_check_mark: executor support "once"
+{
+  "username": "username",
+  "email": "foobar@test.com"
+}
 
-- the executor should allow running a scenario only once
-- "once" can be used if the goal is not a load test, but just running the .http file (useful for general api-testing or automated smoke tests)
+### Get All Users
+GET {{URL}}/users
+Authorization: Bearer {{$auth.token("auth-id")}}
+```
 
-## :white_check_mark: excecutor support "duration"
+---
 
-- the executor should allow running multiple requests for a period of time
-- use a minimal sleep between executions to not overwhelm the local process
+## 🌱 Example Environment File
 
-## executor support "concurrency"
+```json
+{
+  "local": {
+    "URL": "http://localhost:8080",
+    "Security": {
+      "Auth": {
+        "auth-id": {
+          "Type": "OAuth2",
+          "Token URL": "http://localhost:8081/realms/test-realm/protocol/openid-connect/token",
+          "Grant Type": "Password",
+          "Client ID": "test-client",
+          "Client Secret": "test-secret",
+          "Username": "test-user",
+          "Password": "test-password"
+        }
+      }
+    }
+  }
+}
+```
 
-- the executor should allow execution on multiple threads inside go routines
-- execution results should be returned from each go routine after finishing
+---
 
-## :white_check_mark: authentication support
+## 📝 Inline Variables
 
-- many mature systems require authentication to use their endpoints
-- jetter should support a pre-execution hook to retrieve a jwt
-- variables and credentials should be given via env file
-- use the same or similar (but compatible) format like intellij env file
-- authentication should be configured intellij compatible like this ``Authorization: Bearer {{$auth.token("auth-id")}}``
+You can define variables directly at the top of your `.http` file using the `@` syntax:
 
--->  :white_check_mark: TESTING: need a local docker-compose and basic config for keycloak
+```http
+@ID = 123
+@TOKEN = abc
 
-## token refresh after expiry
-- if token expires during a scenario jetter should automatically refresh or obtain new token
+### Get User
+GET http://localhost:8081/users/{{ID}}
+Authorization: Bearer {{TOKEN}}
+```
 
-## variable support from env file
+- Inline variables are available for substitution in URLs, headers, and bodies.
+- Environment variables (from `-e`) are also available, but **inline variables take precedence** if keys overlap.
 
-- static variables defined in the env file should be replaced before execution
+---
 
-## "magic variable" support
+## 💡 Magic Variables
 
-- allow using magic variables like "{{$uuid}}"
-- these variables will be automatically replaced before execution
+Described below are some built-in magic variables you can use in your `.http` files.
 
-| Variable | Output      |
-|----------|-------------|
-| {{$uuid}}  | random UUID |
-| {{$tsid}} | random TSID |
+| Variable                     | Description                                       |
+|------------------------------|---------------------------------------------------|
+| `{{$random.$uuid}}`  | Generates a random UUIDv4                         |
+| `{{$random.hexadecimal(n)}}` | Generates a random hexadecimal string of length n |
 
-## support for intellij request configuration
+---
 
-- intellij .http syntax allows using ͘``# @timeout 10`` and other configuration
-- maybe not all directives can be supported or make sense, needs to be checked
-- this should be added to the parser and the http client should pick up the configuration
+## Authenticantion Hooks
+Jetter supports Oauth2 authentication out of the box. You can define multiple auth configurations in your environment file and reference them in your `.http` file using the `{{$auth.token("auth-id")}}` magic variable. Supported Grant Types: `Client Credentials` and `Password`.
 
-## support jetter directives (per-request or global)
+## 🧪 Local Testing
+- See `examples/` for sample `.http` and environment files.
+- Use the provided `docker-compose.yml` for local Keycloak and Wiremock setup.
 
-- allow global configuration which can be put at the top a .http file
-- global ``#@jetter threshold_http_req_failed 0.01``
-- per-request ``#@jetter extract ID $.username`` and in another request use ``{{$vars("ID")}}.``
+```sh
+make local-setup
+```
+
+- Access Wiremock at `http://localhost:8081` and Keycloak at `http://localhost:8080`.
+- Use the `examples/http-client.env.json` for testing authentication and API calls.
+
+```sh
+make run
+```
+
+---
+
+## 📚 Backlog & Roadmap
+See [BACKLOG.md](./BACKLOG.md) for planned features and ongoing development.
+
+---
+
+## 🤝 Contributing
+PRs and feedback are welcome! Please open issues for bugs, feature requests, or questions.
+
+---
+
+
+
+---
+
+## License
+MIT
+

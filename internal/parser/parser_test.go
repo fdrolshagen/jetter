@@ -152,3 +152,110 @@ func TestParseHttp_ShouldErrorOnParseGlobalVariable(t *testing.T) {
 
 	assert.NotNil(t, err)
 }
+
+func TestParseHttp_ShouldErrorOnMissingHeaderBodySeparation(t *testing.T) {
+	content := strings.TrimSpace(`
+		### Create User
+		POST http://localhost:8081/users
+		Authorization: Bearer token
+		Content-Type: application/json
+		{
+		  "username": "username",
+		  "email": "foobar@test.com"
+		}`)
+
+	_, err := ParseHttp(strings.NewReader(content))
+
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "expected blank line between headers and body")
+}
+
+func TestParseHttp_MultipleRequestsMixedHeadersAndBodies(t *testing.T) {
+	content := strings.TrimSpace(`
+		### First Request
+		GET http://localhost:8081/first
+		Content-Type: application/json
+
+		### Second Request
+		POST http://localhost:8081/second
+		Content-Type: application/json
+
+		{"key": "value"}
+
+		### Third Request
+		PUT http://localhost:8081/third
+		Authorization: Bearer token
+		Content-Type: application/json
+
+		`)
+
+	c, err := ParseHttp(strings.NewReader(content))
+
+	assert.Nil(t, err)
+	assert.Len(t, c.Requests, 3)
+	assert.Equal(t, "GET", c.Requests[0].Method)
+	assert.Equal(t, "POST", c.Requests[1].Method)
+	assert.Equal(t, "PUT", c.Requests[2].Method)
+	assert.Equal(t, "", c.Requests[0].Body)
+	assert.Contains(t, c.Requests[1].Body, "key")
+	assert.Equal(t, "", c.Requests[2].Body)
+}
+
+func TestParseHttp_CommentsAndEmptyLinesInBody(t *testing.T) {
+	content := strings.TrimSpace(`
+		### Request With Body Comments
+		POST http://localhost:8081/commented
+		Content-Type: application/json
+
+		# This is a comment
+		
+		{"foo": "bar"}
+		
+		# Another comment
+		`)
+
+	c, err := ParseHttp(strings.NewReader(content))
+
+	assert.Nil(t, err)
+	assert.Len(t, c.Requests, 1)
+	body := c.Requests[0].Body
+	assert.Contains(t, body, "foo")
+}
+
+func TestParseHttp_MalformedRequests(t *testing.T) {
+	// Missing method
+	content1 := strings.TrimSpace(`
+		###
+		localhost:8081/missingmethod
+		Content-Type: application/json
+
+		{"foo": "bar"}
+		`)
+	_, err := ParseHttp(strings.NewReader(content1))
+
+	assert.NotNil(t, err)
+
+	// Missing URL
+	content2 := strings.TrimSpace(`
+		###
+		POST
+		Content-Type: application/json
+
+		{"foo": "bar"}
+		`)
+	_, err = ParseHttp(strings.NewReader(content2))
+
+	assert.NotNil(t, err)
+
+	// Missing header colon
+	content3 := strings.TrimSpace(`
+		###
+		POST http://localhost:8081/missingcolon
+		Content-Type application/json
+
+		{"foo": "bar"}
+		`)
+	_, err = ParseHttp(strings.NewReader(content3))
+
+	assert.NotNil(t, err)
+}
