@@ -1,33 +1,42 @@
-#  :bulb: feature backlog
+# Feature Backlog
 
-## command line arguments
+---
 
---concurrency [-c]  : how many threads should be used to fire requests
+## High Priority
 
---output [-o]       : output file/format, default is output format is human friendly tabular output, machine-readable options should be available with  "-o json" or "-o yaml"
+### Executor Support (Concurrency)
+- Executor should support execution on multiple goroutines.
+- Execution results should be returned from each goroutine after completion.
+- `--concurrency [-c]` Number of threads to use for firing requests.
 
-## report format
+---
 
-- add reporter for json and yaml output
-- maybe use interface for multiple reporters "func Report(r internal.Result)"
-- -o syntax similar to kubectl
+## Medium Priority
 
-## executor support "concurrency"
+### Report Format
+- Add reporters for **JSON** and **YAML** output.
+- Consider using an interface for multiple reporters: `func Report(r internal.Result)`.
 
-- the executor should allow execution on multiple threads inside go routines
-- execution results should be returned from each go routine after finishing
+- `--output [-o]`  
+  - Support `-o` syntax similar to `kubectl`.
+  - Output file/format. Default is human-friendly tabular output.  
+      Machine-readable options should be available, e.g., `-o json` or `-o yaml`.
 
-## token refresh after expiry
-- if token expires during a scenario jetter should automatically refresh or obtain new token
+### Jetter-Specific Directives (Per-Request or Global)
+- Support global configuration at the top of a `.http` file:  
+  `#@jetter threshold_http_req_failed 0.01`
+- Support per-request configuration:  
+  `#@jetter extract ID $.username`  
+  Variables can then be reused in other requests: `{{$vars("ID")}}`
 
-## support for intellij request configuration
+---
 
-- intellij .http syntax allows using ͘``# @timeout 10`` and other configuration
-- maybe not all directives can be supported or make sense, needs to be checked
-- this should be added to the parser and the http client should pick up the configuration
+## Low Priority / Optional
 
-## support jetter directives (per-request or global)
+### IntelliJ Request Configuration Support
+- IntelliJ `.http` syntax allows using directives like `# @timeout 10`.
+- Not all directives may be supported or relevant; this needs verification.
+- Parser should handle supported directives, and the HTTP client should pick up the configuration.
 
-- allow global configuration which can be put at the top a .http file
-- global ``#@jetter threshold_http_req_failed 0.01``
-- per-request ``#@jetter extract ID $.username`` and in another request use ``{{$vars("ID")}}.``
+### Token Refresh After Expiry
+- If a token expires during a scenario, Jetter should automatically refresh or obtain a new token.

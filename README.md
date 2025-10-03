@@ -2,30 +2,46 @@
 
 **Jetter** is a light-weight load testing and API scenario runner for HTTP services. It uses a subset of the IntelliJ `.http` file syntax and supports environment variables, authentication, and more.
 
-> **:exclamation: This project is under construction and has not yet published a working version.**
+✨ **Why Jetter?**  
+Unlike many other CLI-based HTTP testing tools, **Jetter** adheres to the [IntelliJ HTTP Client specification](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html).  
+That means you can:
+- ✅ Write and run requests directly in `.http` files
+- ✅ Use IntelliJ’s built-in syntax highlighting and auto-completion
+- ✅ Seamlessly switch between IntelliJ and the CLI without changing formats
+
+With Jetter, your `.http` files become reusable across development, testing, and load simulation — all while staying compatible with IntelliJ’s editor.
 
 ---
 
-## ✨ Features
-- Parse and run `.http` scenario files
-- Intellij compatible features and syntax
-  - Environment variables
-  - Inline variables
-  - Magic variables
-  - Multiple requests per file
-  - Authentication hooks (OAuth2)
-- Duration-based load testing or just once execution
+## Features
+
+- **Parse and run `.http` scenario files**  
+  Use the same request format you already know from IntelliJ.
+
+- **Full IntelliJ compatibility** ([specification](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html))  
+  Leverage IntelliJ’s syntax highlighting, auto-completion, and request runner. Jetter supports:
+  - 🌍 Environment variables
+  - 📝 In-Place & dynamic variables
+  - 📑 Multiple requests per file
+  - 🔑 Authentication hooks (OAuth2)
+
+- **Flexible execution modes**
+  - Run scenarios once for quick checks
+  - Simulate load with duration-based execution
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
+
+Run your first scenario with a single command:
+
 ```sh
 jetter --file examples/example.http --env examples/http-client.env.json:local
 ```
 
 ---
 
-## 🛠️ Command Line Flags
+## Command Line Flags
 
 | Flag                | Alias | Description                                                                                  |
 |---------------------|-------|----------------------------------------------------------------------------------------------|
@@ -36,9 +52,9 @@ jetter --file examples/example.http --env examples/http-client.env.json:local
 
 ---
 
-## 📄 Example .http File
+## Example .http File
 
-```http
+```http request
 ### Create User
 POST {{URL}}/users
 Authorization: Bearer {{$auth.token("auth-id")}}
@@ -56,7 +72,7 @@ Authorization: Bearer {{$auth.token("auth-id")}}
 
 ---
 
-## 🌱 Example Environment File
+## Example Environment File
 
 ```json
 {
@@ -81,11 +97,16 @@ Authorization: Bearer {{$auth.token("auth-id")}}
 
 ---
 
-## 📝 Inline Variables
+## In-place Variables
 
-You can define variables directly at the top of your `.http` file using the `@` syntax:
+You can define **[in-place variables](https://www.jetbrains.com/help/idea/http-client-variables.html#in-place-variables)** directly at the top of your `.http` file using the `@` syntax.  
 
-```http
+- Inline variables can be used in URLs, headers, and request bodies.
+- Environment variables (from `--env`) are also available, but **inline variables take precedence** if keys overlap.
+
+**Usage**
+
+```http request
 @ID = 123
 @TOKEN = abc
 
@@ -94,27 +115,39 @@ GET http://localhost:8081/users/{{ID}}
 Authorization: Bearer {{TOKEN}}
 ```
 
-- Inline variables are available for substitution in URLs, headers, and bodies.
-- Environment variables (from `-e`) are also available, but **inline variables take precedence** if keys overlap.
 
 ---
 
-## 💡 Magic Variables
+## Dynamic Variables
 
-Described below are some built-in magic variables you can use in your `.http` files.
+You can use built-in **[dynamic variables](https://www.jetbrains.com/help/idea/http-client-variables.html#dynamic-variables)** in your `.http` files.  
+
+Jetter currently supports the following dynamic variables:
 
 | Variable                     | Description                                       |
 |------------------------------|---------------------------------------------------|
 | `{{$random.$uuid}}`  | Generates a random UUIDv4                         |
 | `{{$random.hexadecimal(n)}}` | Generates a random hexadecimal string of length n |
 
+**Usage**
+
+```http request
+@UUID = {{$random.uuid}}
+
+### Get User
+GET http://localhost:8081/users/{{UUID}}
+Authorization: Bearer {{TOKEN}}
+```
+
 ---
 
-## Authenticantion Hooks
-Jetter supports Oauth2 authentication out of the box. You can define multiple auth configurations in your environment file and reference them in your `.http` file using the `{{$auth.token("auth-id")}}` magic variable. Supported Grant Types: `Client Credentials` and `Password`.
+## OAuth 2.0 authorization
+Jetter supports **[Oauth2 authentication](https://www.jetbrains.com/help/idea/oauth-2-0-authorization.html)** out of the box. You can define multiple auth configurations in your environment file and reference them in your `.http` file using the `{{$auth.token("auth-id")}}` magic variable. Supported Grant Types: `Client Credentials` and `Password`.
 
-## 🧪 Local Testing
-- See `examples/` for sample `.http` and environment files.
+---
+
+## Local Testing
+- See `examples/` for sample `example.http` and `examples/http-client.env.json` files.
 - Use the provided `docker-compose.yml` for local Keycloak and Wiremock setup.
 
 ```sh
@@ -130,6 +163,27 @@ make run
 
 ---
 
+## Makefile Commands
+
+The included **Makefile** makes it easy to build, test, and run Jetter.
+
+```sh
+make <command>
+```
+
+Available commands:
+
+| Command            | Description                                                   |
+|--------------------|---------------------------------------------------------------|
+| `make build`       | Build the project binary (`bin/jetter`)                    |
+| `make install`     | Install the binary into `~/bin`                            |
+| `make run`         | Run Jetter with the example `.http` and environment files  |
+| `make test`        | Run all Go tests                                           |
+| `make local-setup` | Start local Keycloak + Wiremock via Docker Compose         |
+| `make help`        | Print a summary of all available commands                  |
+
+---
+
 ## 📚 Backlog & Roadmap
 See [BACKLOG.md](./BACKLOG.md) for planned features and ongoing development.
 
@@ -137,10 +191,6 @@ See [BACKLOG.md](./BACKLOG.md) for planned features and ongoing development.
 
 ## 🤝 Contributing
 PRs and feedback are welcome! Please open issues for bugs, feature requests, or questions.
-
----
-
-
 
 ---
 
