@@ -1,81 +1,202 @@
-**:exclamation: This project is under construction and has not yet published a working version**
+# 🚀 Jetter
 
-#  :bulb: feature backlog
+**Jetter** is a light-weight load testing and API scenario runner for HTTP services. It uses a subset of the IntelliJ `.http` file syntax and supports environment variables, authentication, and more.
 
-## command line arguments
+✨ **Why Jetter?**  
+Unlike many other CLI-based HTTP testing tools, **Jetter** adheres to the [IntelliJ HTTP Client specification](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html).  
+That means you can:
+- ✅ Write and run requests directly in `.http` files
+- ✅ Use IntelliJ’s built-in syntax highlighting and auto-completion
+- ✅ Seamlessly switch between IntelliJ and the CLI without changing formats
 
-command line arguments should be parsed using an available library
+With Jetter, your `.http` files become reusable across development, testing, and load simulation — all while staying compatible with IntelliJ’s editor.
 
-:white_check_mark: --help [-h]         : print available command line arguments and explanation
+---
 
---concurrency [-c]  : how many threads should be used to fire requests
+## Features
 
-:white_check_mark: --duration [-d]     : how long should the load test run
+- **Parse and run `.http` scenario files**  
+  Use the same request format you already know from IntelliJ.
 
-:white_check_mark: --once              : just execute a single scenario run, ignores concurrency and duration
+- **Full IntelliJ compatibility** ([specification](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html))  
+  Leverage IntelliJ’s syntax highlighting, auto-completion, and request runner. Jetter supports:
+  - 🌍 Environment variables
+  - 📝 In-Place & dynamic variables
+  - 📑 Multiple requests per file
+  - 🔑 Authentication hooks (OAuth2)
 
-:white_check_mark: --file [-f]         : the .http file to use, format uses a subset of intellij http syntax
+- **Flexible execution modes**
+  - Run scenarios once for quick checks
+  - Simulate load with duration-based execution
 
-:white_check_mark: --env [-e]          : file to use as variable input, format ``-e <file>:<env-key>``, ie.``-e client.env.json:service-dev``
+---
 
---output [-o]       : output file/format, default is output format is human friendly tabular output, machine-readable options should be available with  "-o json" or "-o yaml"
+## Quick Start
 
-## report format
+Run your first scenario with a single command:
 
-- add reporter for json and yaml output
-- maybe use interface for multiple reporters "func Report(r internal.Result)"
-- -o syntax similar to kubectl
+```sh
+jetter --file examples/example.http --env examples/http-client.env.json:local
+```
 
-## :white_check_mark: executor support "once"
+---
 
-- the executor should allow running a scenario only once
-- "once" can be used if the goal is not a load test, but just running the .http file (useful for general api-testing or automated smoke tests)
+## Command Line Flags
 
-## :white_check_mark: excecutor support "duration"
+| Flag                | Alias | Description                                                                                  |
+|---------------------|-------|----------------------------------------------------------------------------------------------|
+| `--help`            | `-h`  | Print available command line arguments and explanation                                        |
+| `--file`            | `-f`  | Path to the .http file (required)                                                            |
+| `--env`             | `-e`  | Path to the environment file. Format: `-e <file>:<env-key>`                                  |
+| `--duration`        | `-d`  | How long should the load test run (e.g. `30s`, `1m`)                                         |
 
-- the executor should allow running multiple requests for a period of time
-- use a minimal sleep between executions to not overwhelm the local process
+---
 
-## executor support "concurrency"
+## Example .http File
 
-- the executor should allow execution on multiple threads inside go routines
-- execution results should be returned from each go routine after finishing
+```text
+### Create User
+POST {{URL}}/users
+Authorization: Bearer {{$auth.token("auth-id")}}
+Content-Type: application/json
 
-## :white_check_mark: authentication support
+{
+  "username": "username",
+  "email": "foobar@test.com"
+}
 
-- many mature systems require authentication to use their endpoints
-- jetter should support a pre-execution hook to retrieve a jwt
-- variables and credentials should be given via env file
-- use the same or similar (but compatible) format like intellij env file
-- authentication should be configured intellij compatible like this ``Authorization: Bearer {{$auth.token("auth-id")}}``
+### Get All Users
+GET {{URL}}/users
+Authorization: Bearer {{$auth.token("auth-id")}}
+```
 
--->  :white_check_mark: TESTING: need a local docker-compose and basic config for keycloak
+---
 
-## token refresh after expiry
-- if token expires during a scenario jetter should automatically refresh or obtain new token
+## Example Environment File
 
-## variable support from env file
+```json
+{
+  "local": {
+    "URL": "http://localhost:8080",
+    "Security": {
+      "Auth": {
+        "auth-id": {
+          "Type": "OAuth2",
+          "Token URL": "http://localhost:8081/realms/test-realm/protocol/openid-connect/token",
+          "Grant Type": "Password",
+          "Client ID": "test-client",
+          "Client Secret": "test-secret",
+          "Username": "test-user",
+          "Password": "test-password"
+        }
+      }
+    }
+  }
+}
+```
 
-- static variables defined in the env file should be replaced before execution
+---
 
-## "magic variable" support
+## In-place Variables
 
-- allow using magic variables like "{{$uuid}}"
-- these variables will be automatically replaced before execution
+You can define **[in-place variables](https://www.jetbrains.com/help/idea/http-client-variables.html#in-place-variables)** directly at the top of your `.http` file using the `@` syntax.  
 
-| Variable | Output      |
-|----------|-------------|
-| {{$uuid}}  | random UUID |
-| {{$tsid}} | random TSID |
+- Inline variables can be used in URLs, headers, and request bodies.
+- Environment variables (from `--env`) are also available, but **inline variables take precedence** if keys overlap.
 
-## support for intellij request configuration
+**Usage**
 
-- intellij .http syntax allows using ͘``# @timeout 10`` and other configuration
-- maybe not all directives can be supported or make sense, needs to be checked
-- this should be added to the parser and the http client should pick up the configuration
+```text
+@ID = 123
+@TOKEN = abc
 
-## support jetter directives (per-request or global)
+### Get User
+GET http://localhost:8081/users/{{ID}}
+Authorization: Bearer {{TOKEN}}
+```
 
-- allow global configuration which can be put at the top a .http file
-- global ``#@jetter threshold_http_req_failed 0.01``
-- per-request ``#@jetter extract ID $.username`` and in another request use ``{{$vars("ID")}}.``
+
+---
+
+## Dynamic Variables
+
+You can use built-in **[dynamic variables](https://www.jetbrains.com/help/idea/http-client-variables.html#dynamic-variables)** in your `.http` files.  
+
+Jetter currently supports the following dynamic variables:
+
+| Variable                     | Description                                       |
+|------------------------------|---------------------------------------------------|
+| `{{$random.$uuid}}`  | Generates a random UUIDv4                         |
+| `{{$random.hexadecimal(n)}}` | Generates a random hexadecimal string of length n |
+
+**Usage**
+
+```text
+@UUID = {{$random.uuid}}
+@TSID = 0{{$random.hexadecimal(12)}}
+
+### Get User
+GET http://localhost:8081/users/{{UUID}}
+
+### Get User
+GET http://localhost:8081/users/{{TSID}}
+```
+
+---
+
+## OAuth 2.0 authorization
+Jetter supports **[Oauth2 authentication](https://www.jetbrains.com/help/idea/oauth-2-0-authorization.html)** out of the box. You can define multiple auth configurations in your environment file and reference them in your `.http` file using the `{{$auth.token("auth-id")}}` magic variable. Supported Grant Types: `Client Credentials` and `Password`.
+
+---
+
+## Local Testing
+- See `examples/` for sample `example.http` and `examples/http-client.env.json` files.
+- Use the provided `docker-compose.yml` for local Keycloak and Wiremock setup.
+
+```sh
+make local-setup
+```
+
+- Access Wiremock at `http://localhost:8080` and Keycloak at `http://localhost:8081`.
+- Use the `examples/http-client.env.json` for testing authentication and API calls.
+
+```sh
+make run
+```
+
+---
+
+## Makefile Commands
+
+The included **Makefile** makes it easy to build, test, and run Jetter.
+
+```sh
+make <command>
+```
+
+Available commands:
+
+| Command            | Description                                                   |
+|--------------------|---------------------------------------------------------------|
+| `make build`       | Build the project binary (`bin/jetter`)                    |
+| `make install`     | Install the binary into `~/bin`                            |
+| `make run`         | Run Jetter with the example `.http` and environment files  |
+| `make test`        | Run all Go tests                                           |
+| `make local-setup` | Start local Keycloak + Wiremock via Docker Compose         |
+| `make help`        | Print a summary of all available commands                  |
+
+---
+
+## 📚 Backlog & Roadmap
+See [BACKLOG.md](./BACKLOG.md) for planned features and ongoing development.
+
+---
+
+## 🤝 Contributing
+PRs and feedback are welcome! Please open issues for bugs, feature requests, or questions.
+
+---
+
+## License
+MIT
+

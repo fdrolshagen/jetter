@@ -46,92 +46,53 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		lineCounter++
-		//fmt.Printf("state: %d - line: \"%s\"\n", state, line)
 
 		switch state {
 		case StateParsingStarted:
-			if strings.HasPrefix(line, "@") {
-				parts := strings.Split(line, "=")
-				if len(parts) != 2 {
-					return internal.Collection{}, fmt.Errorf("parsing error: invalid variable definition at line %d", lineCounter)
+			if isVariableDefinition(line) {
+				if err := handleVariableDefinition(line, vars, lineCounter); err != nil {
+					return internal.Collection{}, err
 				}
-				key := strings.TrimSpace(parts[0])
-				key = strings.TrimLeft(key, "@")
-				value := strings.TrimSpace(parts[1])
-
-				vars[key] = value
-			} else if strings.HasPrefix(line, "###") {
-				request.Name = getName(line, len(requests)+1)
-				state = StateInitialConfigLineRead
+			} else if handleNewRequest(line, &requests, &request, &state) {
+				continue
 			}
 		case StateInitialConfigLineRead:
-			// read http line, parse method and url
-			parts := strings.Fields(line)
-			switch {
-			case len(parts) == 1 && strings.HasPrefix(parts[0], "http"):
-				request.Method = "GET"
-				request.Url = parts[0]
-			case len(parts) == 2 && isAllowedMethod(parts[0]):
-				request.Method = parts[0]
-				request.Url = parts[1]
-			default:
-				return internal.Collection{}, fmt.Errorf("parsing error: invalid request at line %d", lineCounter)
+			if handleNewRequest(line, &requests, &request, &state) {
+				continue
 			}
-
+			if err := handleRequestLine(line, &request, lineCounter); err != nil {
+				return internal.Collection{}, err
+			}
 			state = StateHttpConfigLineRead
 		case StateHttpConfigLineRead, StateHttpHeaderRead:
-			// either newline or header line following
-			line = strings.TrimSpace(line)
-
-			if line == "\n" || line == "" {
+			if isHeaderBodySeparation(line) {
 				state = StateHeaderBodySeparationRead
 				break
 			}
-
-			if strings.HasPrefix(line, "###") {
-				// new request starts now, append current request and reset request to start parsing again
-				appendAndReset(&requests, &request)
-
-				request.Name = getName(line, len(requests)+1)
-				state = StateInitialConfigLineRead
+			if handleNewRequest(line, &requests, &request, &state) {
 				continue
 			}
-
-			if strings.HasPrefix(line, "#") {
-				// ignore comments and duplicate initial config line
+			if isComment(line) {
 				continue
 			}
-
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) != 2 {
-				return internal.Collection{}, fmt.Errorf("parsing error: invalid header at line %d", lineCounter)
+			if err := handleHeaderLine(line, &request, lineCounter); err != nil {
+				return internal.Collection{}, err
 			}
-			request.Headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
-
 			state = StateHttpHeaderRead
 		case StateHeaderBodySeparationRead, StateBodyPartRead, StateIgnoredBodyPartRead:
 			line = strings.TrimSpace(line)
-
-			if strings.HasPrefix(line, "###") {
-				// new request starts now, append current request and reset request to start new parsing
-				appendAndReset(&requests, &request)
-
-				request.Name = getName(line, len(requests)+1)
-				state = StateInitialConfigLineRead
+			if handleNewRequest(line, &requests, &request, &state) {
 				continue
 			}
-
 			if ignoreLine(line) {
 				state = StateIgnoredBodyPartRead
 				continue
 			}
-
 			request.Body += line + "\n"
 			state = StateBodyPartRead
 		default:
 			return internal.Collection{}, fmt.Errorf("parsing error: invalid internal state")
 		}
-
 	}
 
 	appendAndReset(&requests, &request)
@@ -139,6 +100,70 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 		Requests:  requests,
 		Variables: vars,
 	}, nil
+}
+
+func isNewRequest(line string) bool {
+	return strings.HasPrefix(line, "###")
+}
+
+func isVariableDefinition(line string) bool {
+	return strings.HasPrefix(line, "@")
+}
+
+func isHeaderBodySeparation(line string) bool {
+	return line == "\n" || line == ""
+}
+
+func isComment(line string) bool {
+	return strings.HasPrefix(line, "#")
+}
+
+func handleVariableDefinition(line string, vars map[string]string, lineCounter int) error {
+	parts := strings.Split(line, "=")
+	if len(parts) != 2 {
+		return fmt.Errorf("parsing error: invalid variable definition at line %d", lineCounter)
+	}
+	key := strings.TrimSpace(parts[0])
+	key = strings.TrimLeft(key, "@")
+	value := strings.TrimSpace(parts[1])
+	vars[key] = value
+	return nil
+}
+
+func handleNewRequest(line string, requests *[]internal.Request, request *internal.Request, state *State) bool {
+	if isNewRequest(line) {
+		appendAndReset(requests, request)
+		request.Name = getName(line, len(*requests)+1)
+		*state = StateInitialConfigLineRead
+		return true
+	}
+	return false
+}
+
+func handleRequestLine(line string, request *internal.Request, lineCounter int) error {
+	parts := strings.Fields(line)
+	if len(parts) == 1 && strings.HasPrefix(parts[0], "http") {
+		request.Method = "GET"
+		request.Url = parts[0]
+	} else if len(parts) == 2 && isAllowedMethod(parts[0]) {
+		request.Method = parts[0]
+		request.Url = parts[1]
+	} else {
+		return fmt.Errorf("parsing error: invalid request at line %d", lineCounter)
+	}
+	return nil
+}
+
+func handleHeaderLine(line string, request *internal.Request, lineCounter int) error {
+	if !strings.Contains(line, ":") && line != "" {
+		return fmt.Errorf("parsing error: expected blank line between headers and body at line %d", lineCounter)
+	}
+	parts := strings.SplitN(line, ":", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("parsing error: invalid header at line %d", lineCounter)
+	}
+	request.Headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	return nil
 }
 
 func ignoreLine(line string) bool {
