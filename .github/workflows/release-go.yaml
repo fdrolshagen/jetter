@@ -1,4 +1,4 @@
-# This workflow will build and attach binaries to a new GitHub release when a release is created.
+# This workflow will build and attach binaries to a new GitHub release when a release is created
 name: Build and Release
 
 on:
