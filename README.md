@@ -133,10 +133,13 @@ Jetter currently supports the following dynamic variables:
 
 ```text
 @UUID = {{$random.uuid}}
+@TSID = 0{{$random.hexadecimal(12)}}
 
 ### Get User
 GET http://localhost:8081/users/{{UUID}}
-Authorization: Bearer {{TOKEN}}
+
+### Get User
+GET http://localhost:8081/users/{{TSID}}
 ```
 
 ---
