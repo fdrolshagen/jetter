@@ -77,7 +77,7 @@ func (c *Collection) MergeEnvironmentVariables(env Environment) {
 		c.Variables = make(map[string]string)
 	}
 	for k, v := range env.Variables {
-		// collection
+		// collection variables take precedence over environment variables
 		if _, exists := c.Variables[k]; !exists {
 			c.Variables[k] = v
 		}
