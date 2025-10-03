@@ -1,5 +1,7 @@
 # 🚀 Jetter
 
+[![build & test](https://github.com/fdrolshagen/jetter/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/fdrolshagen/jetter/actions/workflows/go.yml)
+
 **Jetter** is a light-weight load testing and API scenario runner for HTTP services. It uses a subset of the IntelliJ `.http` file syntax and supports environment variables, authentication, and more.
 
 ✨ **Why Jetter?**  
