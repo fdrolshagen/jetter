@@ -21,7 +21,19 @@ jobs:
         id: vars
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
+          
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: VERSION could not be determined from $GITHUB_REF"
+            exit 1
+          fi
+          
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+          if [[ "$VERSION" == *alpha* ]] || [[ "$VERSION" == *beta* ]]; then
+            echo "PRERELEASE=true" >> $GITHUB_ENV
+          else
+            echo "PRERELEASE=false" >> $GITHUB_ENV
+          fi
 
       - name: Build binaries
         run: |
@@ -41,5 +53,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          files: bin/*
+          name: ${{ env.VERSION }}
+          prerelease: ${{ env.PRERELEASE }}
+          files: build/*
