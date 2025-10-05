@@ -35,6 +35,12 @@ With Jetter, your `.http` files become reusable across development, testing, and
 
 ## Quick Start
 
+Installation via script:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/fdrolshagen/jetter/main/scripts/install.sh | bash
+```
+
 Run your first scenario with a single command:
 
 ```sh
