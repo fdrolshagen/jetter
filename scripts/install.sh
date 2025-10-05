@@ -24,33 +24,39 @@ if [ "$VERSION" = "latest" ]; then
     | cut -d '"' -f4)
 fi
 
-FILENAME="jetter_${OS}_${ARCH}"
-BINARY_URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILENAME}"
-CHECKSUM_URL="https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
+BINARY_NAME="jetter-$VERSION-$OS"
+if [[ "$ARCH" != "amd64" ]]; then
+  BINARY_NAME="$BINARY_NAME-$ARCH"
+fi
 
-echo $BINARY_URL
+if [[ "$OS" == "windows" ]]; then
+  BINARY_NAME="$BINARY_NAME.exe"
+fi
+
+BINARY_URL="https://github.com/${REPO}/releases/download/${VERSION}/${BINARY_NAME}"
+CHECKSUM_URL="https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
 
 TMP_DIR=$(mktemp -d)
 cd "$TMP_DIR"
 
 echo " > Downloading binary..."
-curl -L --fail "$BINARY_URL" -o "$FILENAME"
+curl -L --fail "$BINARY_URL" -o "$BINARY_NAME"
 
 echo " > Downloading checksums..."
 curl -L --fail "$CHECKSUM_URL" -o checksums.txt
 
 echo " > Verifying checksum..."
 if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum --ignore-missing -c <(grep " ${FILENAME}$" checksums.txt)
+  sha256sum --ignore-missing -c <(grep " ${BINARY_NAME}$" checksums.txt)
 elif command -v shasum >/dev/null 2>&1; then
-  grep " ${FILENAME}$" checksums.txt | shasum -a 256 -c -
+  grep " ${BINARY_NAME}$" checksums.txt | shasum -a 256 -c -
 else
   echo " !>  Warning: no checksum utility found. Skipping verification."
 fi
 
-chmod +x "$FILENAME"
-echo "Installing to $INSTALL_DIR (sudo may be required)..."
-sudo mv "$FILENAME" "$INSTALL_DIR/jetter"
+chmod +x "$BINARY_NAME"
+echo " > Installing to $INSTALL_DIR..."
+sudo mv "$BINARY_NAME" "$INSTALL_DIR/jetter"
 
 echo " > jetter $VERSION installed successfully!"
-echo "You can now run 'jetter --help'"
+echo " > Restart your shell and run 'jetter --help'"
