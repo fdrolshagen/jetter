@@ -259,3 +259,85 @@ func TestParseHttp_MalformedRequests(t *testing.T) {
 
 	assert.NotNil(t, err)
 }
+
+func TestParseHttp_ShouldIgnoreSingleLineScript(t *testing.T) {
+	content := strings.TrimSpace(`
+		### Request With Single Line Script
+		POST http://localhost:8081/commented
+		Content-Type: application/json
+
+		{"foo": "bar"}
+		
+		> {%console.log(response.status) %}
+
+		### Another Request
+		GET http://localhost:8081/commented
+		Content-Type: application/json
+		`)
+
+	c, err := ParseHttp(strings.NewReader(content))
+
+	assert.Nil(t, err)
+	assert.Len(t, c.Requests, 2)
+	body := c.Requests[0].Body
+	assert.Contains(t, body, "foo")
+	assert.NotContains(t, body, "console.log")
+}
+
+func TestParseHttp_ShouldIgnoreScriptBlock(t *testing.T) {
+	content := strings.TrimSpace(`
+		### Request With Multiline Script
+		POST http://localhost:8081/commented
+		Content-Type: application/json
+
+		{"foo": "bar"}
+		
+		> {%
+			console.log(response.status) 
+		%}
+
+		### Another Request
+		GET http://localhost:8081/commented
+		Content-Type: application/json
+		`)
+
+	c, err := ParseHttp(strings.NewReader(content))
+
+	assert.Nil(t, err)
+	assert.Len(t, c.Requests, 2)
+	body := c.Requests[0].Body
+	assert.Contains(t, body, "foo")
+	assert.NotContains(t, body, "console.log")
+}
+
+func TestParseHttp_ShouldIgnoreFileInAndOut(t *testing.T) {
+	content := strings.TrimSpace(`
+		### Request With File Out
+		POST http://localhost:8081/commented
+		Content-Type: application/json
+
+		> file.txt
+		`)
+
+	c, err := ParseHttp(strings.NewReader(content))
+
+	assert.Nil(t, err)
+	assert.Len(t, c.Requests, 1)
+	body := c.Requests[0].Body
+	assert.NotContains(t, body, "file.txt")
+
+	content = strings.TrimSpace(`
+		### Request With File Out
+		POST http://localhost:8081/commented
+		Content-Type: application/json
+
+		< file.txt
+		`)
+
+	c, err = ParseHttp(strings.NewReader(content))
+
+	assert.Nil(t, err)
+	assert.Len(t, c.Requests, 1)
+	body = c.Requests[0].Body
+	assert.NotContains(t, body, "file.txt")
+}
