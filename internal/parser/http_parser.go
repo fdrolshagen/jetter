@@ -20,6 +20,7 @@ const (
 	StateHeaderBodySeparationRead
 	StateBodyPartRead
 	StateIgnoredBodyPartRead
+	StateMultilineScriptStarted
 )
 
 var methods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
@@ -47,19 +48,17 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 		line := strings.TrimSpace(scanner.Text())
 		lineCounter++
 
+		if handleNewRequest(line, &requests, &request) {
+			state = StateInitialConfigLineRead
+			continue
+		}
+
 		switch state {
 		case StateParsingStarted:
-			if isVariableDefinition(line) {
-				if err := handleVariableDefinition(line, vars, lineCounter); err != nil {
-					return internal.Collection{}, err
-				}
-			} else if handleNewRequest(line, &requests, &request, &state) {
-				continue
+			if err := handleVariableDefinition(line, vars, lineCounter); err != nil {
+				return internal.Collection{}, err
 			}
 		case StateInitialConfigLineRead:
-			if handleNewRequest(line, &requests, &request, &state) {
-				continue
-			}
 			if err := handleRequestLine(line, &request, lineCounter); err != nil {
 				return internal.Collection{}, err
 			}
@@ -69,9 +68,6 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 				state = StateHeaderBodySeparationRead
 				break
 			}
-			if handleNewRequest(line, &requests, &request, &state) {
-				continue
-			}
 			if isComment(line) {
 				continue
 			}
@@ -80,16 +76,20 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 			}
 			state = StateHttpHeaderRead
 		case StateHeaderBodySeparationRead, StateBodyPartRead, StateIgnoredBodyPartRead:
-			line = strings.TrimSpace(line)
-			if handleNewRequest(line, &requests, &request, &state) {
+			if isMultilineScriptStart(line) {
+				state = StateMultilineScriptStarted
 				continue
 			}
-			if ignoreLine(line) {
+			if isEmptyLine(line) || isScriptOrFile(line) {
 				state = StateIgnoredBodyPartRead
 				continue
 			}
 			request.Body += line + "\n"
 			state = StateBodyPartRead
+		case StateMultilineScriptStarted:
+			if isScriptEnd(line) {
+				state = StateIgnoredBodyPartRead
+			}
 		default:
 			return internal.Collection{}, fmt.Errorf("parsing error: invalid internal state")
 		}
@@ -118,7 +118,23 @@ func isComment(line string) bool {
 	return strings.HasPrefix(line, "#")
 }
 
+func isScriptOrFile(line string) bool {
+	return strings.HasPrefix(line, ">") || strings.HasPrefix(line, "<")
+}
+
+func isMultilineScriptStart(line string) bool {
+	return strings.HasPrefix(line, "> {%") && !strings.HasSuffix(line, "%}")
+}
+
+func isScriptEnd(line string) bool {
+	return strings.HasSuffix(line, "%}")
+}
+
 func handleVariableDefinition(line string, vars map[string]string, lineCounter int) error {
+	if !isVariableDefinition(line) {
+		return nil
+	}
+
 	parts := strings.Split(line, "=")
 	if len(parts) != 2 {
 		return fmt.Errorf("parsing error: invalid variable definition at line %d", lineCounter)
@@ -130,11 +146,10 @@ func handleVariableDefinition(line string, vars map[string]string, lineCounter i
 	return nil
 }
 
-func handleNewRequest(line string, requests *[]internal.Request, request *internal.Request, state *State) bool {
+func handleNewRequest(line string, requests *[]internal.Request, request *internal.Request) bool {
 	if isNewRequest(line) {
 		appendAndReset(requests, request)
 		request.Name = getName(line, len(*requests)+1)
-		*state = StateInitialConfigLineRead
 		return true
 	}
 	return false
@@ -166,9 +181,8 @@ func handleHeaderLine(line string, request *internal.Request, lineCounter int) e
 	return nil
 }
 
-func ignoreLine(line string) bool {
-	// HasPrefix(line ">") -> javascript statement, ignore
-	return line == "\n" || line == "" || strings.HasPrefix(line, ">")
+func isEmptyLine(line string) bool {
+	return line == "\n" || line == ""
 }
 
 func newRequest() internal.Request {
