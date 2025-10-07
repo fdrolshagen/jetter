@@ -35,7 +35,7 @@ func Execute() {
 		},
 	}
 
-	rootCmd.PersistentFlags().BoolVarP(&showVersion, "version", "v", false, "Print version and exit")
+	rootCmd.PersistentFlags().BoolVar(&showVersion, "version", false, "Print version and exit")
 	rootCmd.Flags().DurationVarP(&duration, "duration", "d", 0,
 		"How long should the load test run (accepts duration format, e.g. 30s, 1m)")
 	rootCmd.Flags().StringVarP(&file, "file", "f", "", "Path to the .http file")
