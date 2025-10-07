@@ -14,30 +14,40 @@ import (
 )
 
 var (
-	duration time.Duration
-	file     string
-	envPath  string
+	duration    time.Duration
+	file        string
+	envPath     string
+	showVersion bool
 )
 
-func Execute() {
-	PrintBanner()
+var version = "dev"
 
+func Execute() {
 	var exitCode int
 	rootCmd := &cobra.Command{
 		Use:   "jetter",
 		Short: "Jetter – a load test tool",
 		Long:  "Jetter runs load tests based on .http scenario files.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			PrintBanner()
 			exitCode = run()
 			return nil
 		},
 	}
 
+	rootCmd.PersistentFlags().BoolVar(&showVersion, "version", false, "Print version and exit")
 	rootCmd.Flags().DurationVarP(&duration, "duration", "d", 0,
 		"How long should the load test run (accepts duration format, e.g. 30s, 1m)")
 	rootCmd.Flags().StringVarP(&file, "file", "f", "", "Path to the .http file")
 	rootCmd.Flags().StringVarP(&envPath, "env", "e", "", "Path to the environment file")
 	rootCmd.MarkFlagRequired("file")
+
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if showVersion {
+			fmt.Println(version)
+			os.Exit(0)
+		}
+	}
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
