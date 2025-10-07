@@ -39,11 +39,14 @@ jobs:
       - name: Build binaries
         run: |
           mkdir -p build
-          GOOS=linux   GOARCH=amd64 go build -o build/jetter-$VERSION-linux
-          GOOS=linux   GOARCH=arm64 go build -o build/jetter-$VERSION-linux-arm64
-          GOOS=darwin  GOARCH=amd64 go build -o build/jetter-$VERSION-darwin
-          GOOS=darwin  GOARCH=arm64 go build -o build/jetter-$VERSION-darwin-arm64
-          GOOS=windows GOARCH=amd64 go build -o build/jetter-$VERSION-windows.exe
+          
+          LDFLAGS="-X 'github.com/fdrolshagen/jetter/cmd.version=${VERSION}'"
+          
+          GOOS=linux   GOARCH=amd64 go build -ldflags="$LDFLAGS" -o build/jetter-$VERSION-linux
+          GOOS=linux   GOARCH=arm64 go build -ldflags="$LDFLAGS" -o build/jetter-$VERSION-linux-arm64
+          GOOS=darwin  GOARCH=amd64 go build -ldflags="$LDFLAGS" -o build/jetter-$VERSION-darwin
+          GOOS=darwin  GOARCH=arm64 go build -ldflags="$LDFLAGS" -o build/jetter-$VERSION-darwin-arm64
+          GOOS=windows GOARCH=amd64 go build -ldflags="$LDFLAGS" -o build/jetter-$VERSION-windows.exe
 
       - name: Generate checksums
         run: |
