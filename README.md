@@ -32,7 +32,7 @@ With Jetter, your `.http` files become reusable across development, testing, and
 - **Flexible execution modes**
   - Run scenarios once for quick checks
   - Simulate load with duration-based execution
-  - Run on multiple workers in parallel
+  - Run on multiple workers concurrently
 
 ---
 
@@ -60,7 +60,7 @@ jetter --file examples/example.http --env examples/http-client.env.json:local
 | `--file`        | `-f`  | Path to the .http file (required)                           |
 | `--env`         | `-e`  | Path to the environment file. Format: `-e <file>:<env-key>` |
 | `--duration`    | `-d`  | How long should the load test run (e.g. `30s`, `1m`)        |
-| `--concurrency` | `-c`  | How many workers should run in parallel (default: 1)        |
+| `--concurrency` | `-c`  | How many workers should run concurrently (default: 1)       |
 | `--version`     |       | Print version and exit                                      |
 
 ---
