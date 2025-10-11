@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+// Submit executes the given scenario either once or concurrently for a specified duration.
+//
+// If the scenario has a duration of zero, a single execution is performed.
+// Otherwise, multiple executions are run concurrently according to the scenario's concurrency setting,
+// and they continue until the duration elapses or the context is canceled.
+//
+// The function aggregates the results of all executions and indicates whether any of them encountered an error.
 func Submit(s internal.Scenario) internal.Result {
 	if s.Duration == 0 {
 		execution := ExecuteScenario(context.Background(), s)
@@ -61,6 +68,14 @@ func Submit(s internal.Scenario) internal.Result {
 	return result
 }
 
+// ExecuteScenario executes all requests defined by the given scenario within the provided context.
+//
+// The scenario may include multiple requests, which are executed sequentially in order.
+// The provided context `ctx` is used for cancellation and timeout; if the context is done,
+// in-progress requests will be interrupted.
+//
+// The returned Execution summarizes the results of all requests and indicates whether
+// any of them encountered an error.
 func ExecuteScenario(ctx context.Context, s internal.Scenario) internal.Execution {
 	requests, err := Evaluate(s.Collection)
 	if err != nil {
@@ -84,6 +99,14 @@ func ExecuteScenario(ctx context.Context, s internal.Scenario) internal.Executio
 	return internal.Execution{Responses: responses, AnyError: anyError}
 }
 
+// ExecuteRequest performs a single HTTP request described by the given internal.Request.
+//
+// The request uses the provided context `ctx`, which may include cancellation or a timeout.
+// If `ctx` has no deadline, a default timeout (e.g., 5 seconds) is applied to prevent
+// the request from hanging indefinitely.
+//
+// The returned internal.Response contains the HTTP status code, the elapsed duration of
+// the request, and any error encountered during creation or execution.
 func ExecuteRequest(ctx context.Context, r internal.Request) internal.Response {
 	ctx, cancel := withDefaultTimeout(ctx, 5*time.Second)
 	defer cancel()
