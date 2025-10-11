@@ -4,29 +4,51 @@ import (
 	"bytes"
 	"github.com/fdrolshagen/jetter/internal"
 	"net/http"
+	"sync"
 	"time"
 )
 
 func Submit(s internal.Scenario) internal.Result {
-	result := internal.Result{Executions: make([]internal.Execution, 0)}
-
 	if s.Duration == 0 {
 		execution := ExecuteScenario(s)
+		return internal.Result{
+			Executions: []internal.Execution{execution},
+			AnyError:   execution.AnyError,
+		}
+	}
+
+	start := time.Now()
+	duration := s.Duration
+	numWorkers := s.Concurrency
+	if numWorkers <= 0 {
+		numWorkers = 1
+	}
+
+	resultsCh := make(chan internal.Execution, 1000)
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
+
+	for i := 0; i < numWorkers; i++ {
+		go func() {
+			defer wg.Done()
+			for time.Since(start) < duration {
+				resultsCh <- ExecuteScenario(s)
+				time.Sleep(10 * time.Millisecond)
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultsCh)
+	}()
+
+	var result internal.Result
+	for execution := range resultsCh {
 		result.Executions = append(result.Executions, execution)
 		if execution.AnyError {
 			result.AnyError = true
 		}
-		return result
-	}
-
-	start := time.Now()
-	for s.Duration >= time.Since(start) {
-		execution := ExecuteScenario(s)
-		result.Executions = append(result.Executions, execution)
-		if result.AnyError {
-			result.AnyError = true
-		}
-		time.Sleep(10 * time.Millisecond)
 	}
 
 	return result

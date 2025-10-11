@@ -15,6 +15,7 @@ import (
 
 var (
 	duration    time.Duration
+	concurrency int
 	file        string
 	envPath     string
 	showVersion bool
@@ -38,6 +39,7 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVar(&showVersion, "version", false, "Print version and exit")
 	rootCmd.Flags().DurationVarP(&duration, "duration", "d", 0,
 		"How long should the load test run (accepts duration format, e.g. 30s, 1m)")
+	rootCmd.Flags().IntVarP(&concurrency, "concurrency", "c", 1, "Number of concurrent workers")
 	rootCmd.Flags().StringVarP(&file, "file", "f", "", "Path to the .http file")
 	rootCmd.Flags().StringVarP(&envPath, "env", "e", "", "Path to the environment file")
 	rootCmd.MarkFlagRequired("file")
@@ -88,8 +90,9 @@ func run() int {
 	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
 
 	s := internal.Scenario{
-		Collection: &collection,
-		Duration:   duration,
+		Concurrency: concurrency,
+		Collection:  &collection,
+		Duration:    duration,
 	}
 
 	msg = "Running Scenario..."

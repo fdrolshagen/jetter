@@ -37,6 +37,24 @@ func TestSubmit_WithDuration(t *testing.T) {
 	assert.GreaterOrEqual(t, len(result.Executions), 2)
 }
 
+func TestSubmit_WithConcurrency(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	}))
+	defer server.Close()
+
+	s := internal.Scenario{
+		Duration:    30 * time.Millisecond,
+		Concurrency: 2,
+		Collection: &internal.Collection{
+			Requests: []internal.Request{{Method: "GET", Url: server.URL}},
+		},
+	}
+	result := Submit(s)
+	assert.GreaterOrEqual(t, len(result.Executions), 2)
+	assert.False(t, result.AnyError)
+}
+
 func TestExecuteScenario_ErrorInvalidRequest(t *testing.T) {
 	s := internal.Scenario{Collection: &internal.Collection{
 		Requests: []internal.Request{{Method: "", Url: ""}},
