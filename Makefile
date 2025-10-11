@@ -35,5 +35,5 @@ test:
 
 local-setup:
 	@echo "🐳 Starting local setup with Docker Compose..."
-	@docker-compose up --remove-orphans
+	@docker-compose -f testing/docker-compose.yml up --remove-orphans
 	@echo "✅ Local setup complete!"
