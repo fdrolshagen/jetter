@@ -45,10 +45,8 @@ func Submit(s internal.Scenario) internal.Result {
 
 	var result internal.Result
 	for execution := range resultsCh {
+		result.AnyError = execution.AnyError
 		result.Executions = append(result.Executions, execution)
-		if execution.AnyError {
-			result.AnyError = true
-		}
 	}
 
 	return result
