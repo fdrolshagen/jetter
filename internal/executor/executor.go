@@ -2,6 +2,7 @@ package executor
 
 import (
 	"bytes"
+	"context"
 	"github.com/fdrolshagen/jetter/internal"
 	"net/http"
 	"sync"
@@ -10,15 +11,16 @@ import (
 
 func Submit(s internal.Scenario) internal.Result {
 	if s.Duration == 0 {
-		execution := ExecuteScenario(s)
+		execution := ExecuteScenario(context.Background(), s)
 		return internal.Result{
 			Executions: []internal.Execution{execution},
 			AnyError:   execution.AnyError,
 		}
 	}
 
-	start := time.Now()
-	duration := s.Duration
+	ctx, cancel := context.WithTimeout(context.Background(), s.Duration)
+	defer cancel()
+
 	numWorkers := s.Concurrency
 	if numWorkers <= 0 {
 		numWorkers = 1
@@ -31,9 +33,14 @@ func Submit(s internal.Scenario) internal.Result {
 	for i := 0; i < numWorkers; i++ {
 		go func() {
 			defer wg.Done()
-			for time.Since(start) < duration {
-				resultsCh <- ExecuteScenario(s)
-				time.Sleep(10 * time.Millisecond)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					resultsCh <- ExecuteScenario(ctx, s)
+					time.Sleep(10 * time.Millisecond)
+				}
 			}
 		}()
 	}
@@ -45,16 +52,16 @@ func Submit(s internal.Scenario) internal.Result {
 
 	var result internal.Result
 	for execution := range resultsCh {
+		result.Executions = append(result.Executions, execution)
 		if execution.AnyError {
 			result.AnyError = true
 		}
-		result.Executions = append(result.Executions, execution)
 	}
 
 	return result
 }
 
-func ExecuteScenario(s internal.Scenario) internal.Execution {
+func ExecuteScenario(ctx context.Context, s internal.Scenario) internal.Execution {
 	requests, err := Evaluate(s.Collection)
 	if err != nil {
 		return internal.Execution{
@@ -66,7 +73,7 @@ func ExecuteScenario(s internal.Scenario) internal.Execution {
 	responses := make([]internal.Response, 0, len(requests))
 	anyError := false
 	for index, request := range requests {
-		response := ExecuteRequest(request)
+		response := ExecuteRequest(ctx, request)
 		response.Index = index
 		responses = append(responses, response)
 		if response.Error != nil {
@@ -77,9 +84,12 @@ func ExecuteScenario(s internal.Scenario) internal.Execution {
 	return internal.Execution{Responses: responses, AnyError: anyError}
 }
 
-func ExecuteRequest(r internal.Request) internal.Response {
+func ExecuteRequest(ctx context.Context, r internal.Request) internal.Response {
+	ctx, cancel := withDefaultTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	result := internal.Response{Error: nil, Name: r.Name}
-	req, err := http.NewRequest(r.Method, r.Url, bytes.NewBuffer([]byte(r.Body)))
+	req, err := http.NewRequestWithContext(ctx, r.Method, r.Url, bytes.NewBuffer([]byte(r.Body)))
 	if err != nil {
 		result.Error = err
 		return result
@@ -100,4 +110,13 @@ func ExecuteRequest(r internal.Request) internal.Response {
 	result.Duration = elapsed
 	result.Status = resp.StatusCode
 	return result
+}
+
+// withDefaultTimeout returns a context with the given timeout
+// if the original context has no deadline set.
+func withDefaultTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if _, ok := ctx.Deadline(); !ok {
+		return context.WithTimeout(ctx, timeout)
+	}
+	return ctx, func() {}
 }
