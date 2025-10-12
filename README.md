@@ -146,7 +146,7 @@ Jetter currently supports the following dynamic variables:
 
 | Variable                     | Description                                       |
 |------------------------------|---------------------------------------------------|
-| `{{$random.$uuid}}`  | Generates a random UUIDv4                         |
+| `{{$random.uuid}}`  | Generates a random UUIDv4                         |
 | `{{$random.hexadecimal(n)}}` | Generates a random hexadecimal string of length n |
 
 **Usage**
