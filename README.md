@@ -21,19 +21,25 @@ With Jetter, your `.http` files become reusable across development, testing, and
 ## Features
 
 - **Parse and run `.http` scenario files**  
-  Use the same request format you already know from IntelliJ.
+  Use the familiar HTTP request format from IntelliJ’s built-in HTTP client.
 
-- **Full IntelliJ compatibility** ([specification](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html))  
-  Leverage IntelliJ’s syntax highlighting, auto-completion, and request runner. Jetter supports:
+- **Seamless IntelliJ compatibility** ([specification](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html))  
+  Run the same requests you use in IntelliJ — with syntax highlighting, variables, and environment support.
+
+  **✅ Supported**
   - 🌍 Environment variables
-  - 📝 In-Place & dynamic variables
+  - 📝 In-place and dynamic variables
   - 📑 Multiple requests per file
-  - 🔑 Authentication hooks (OAuth2)
+  - 🔑 OAuth2 authentication
+
+  **🚫 Not yet supported**
+  - 📂 File input/output
+  - 🧪 JS execution
 
 - **Flexible execution modes**
-  - Run scenarios once for quick checks
-  - Simulate load with duration-based execution
-  - Run on multiple workers concurrently
+  - ▶️ Run once for quick checks
+  - 🔁 Execute continuously for a fixed duration
+  - ⚙️ Simulate concurrency with multiple workers
 
 ---
 
