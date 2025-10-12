@@ -26,5 +26,10 @@ func ParseEnv(env string) (internal.Environment, error) {
 		return internal.Environment{}, errors.New("invalid environment content")
 	}
 
-	return cfg[envName], nil
+	envConfig, ok := cfg[envName]
+	if !ok {
+		return internal.Environment{}, errors.New("environment not found: " + envName)
+	}
+
+	return envConfig, nil
 }

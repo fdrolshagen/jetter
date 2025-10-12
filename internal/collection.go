@@ -6,6 +6,9 @@ import (
 	"regexp"
 )
 
+// Request represents a single HTTP request definition within a jetter scenario.
+// It defines all necessary details for execution, including the method, target URL,
+// optional headers, and request body content.
 type Request struct {
 	Name    string
 	Method  string
@@ -14,6 +17,9 @@ type Request struct {
 	Body    string
 }
 
+// Collection represents a reusable group of HTTP requests that make up
+// a scenario to be executed by jetter. It may also include variable definitions
+// that can be referenced within individual requests.
 type Collection struct {
 	Requests  []Request
 	Variables map[string]string

@@ -1,6 +1,7 @@
 # 🚀 Jetter
 
 [![build & test](https://github.com/fdrolshagen/jetter/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/fdrolshagen/jetter/actions/workflows/go.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/fdrolshagen/jetter)](https://goreportcard.com/report/github.com/fdrolshagen/jetter)
 ![GitHub Release](https://img.shields.io/github/v/release/fdrolshagen/jetter?include_prereleases&sort=semver&display_name=release)
 
 
@@ -20,19 +21,25 @@ With Jetter, your `.http` files become reusable across development, testing, and
 ## Features
 
 - **Parse and run `.http` scenario files**  
-  Use the same request format you already know from IntelliJ.
+  Use the familiar HTTP request format from IntelliJ’s built-in HTTP client.
 
-- **Full IntelliJ compatibility** ([specification](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html))  
-  Leverage IntelliJ’s syntax highlighting, auto-completion, and request runner. Jetter supports:
+- **Seamless IntelliJ compatibility** ([specification](https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html))  
+  Run the same requests you use in IntelliJ — with syntax highlighting, variables, and environment support.
+
+  **✅ Supported**
   - 🌍 Environment variables
-  - 📝 In-Place & dynamic variables
+  - 📝 In-place and dynamic variables
   - 📑 Multiple requests per file
-  - 🔑 Authentication hooks (OAuth2)
+  - 🔑 OAuth2 authentication
+
+  **🚫 Not yet supported**
+  - 📂 File input/output
+  - 🧪 JS execution
 
 - **Flexible execution modes**
-  - Run scenarios once for quick checks
-  - Simulate load with duration-based execution
-  - Run on multiple workers concurrently
+  - ▶️ Run once for quick checks
+  - 🔁 Execute continuously for a fixed duration
+  - ⚙️ Simulate concurrency with multiple workers
 
 ---
 
@@ -139,7 +146,7 @@ Jetter currently supports the following dynamic variables:
 
 | Variable                     | Description                                       |
 |------------------------------|---------------------------------------------------|
-| `{{$random.$uuid}}`  | Generates a random UUIDv4                         |
+| `{{$random.uuid}}`  | Generates a random UUIDv4                         |
 | `{{$random.hexadecimal(n)}}` | Generates a random hexadecimal string of length n |
 
 **Usage**
@@ -189,14 +196,15 @@ make <command>
 
 Available commands:
 
-| Command            | Description                                                   |
-|--------------------|---------------------------------------------------------------|
-| `make build`       | Build the project binary (`bin/jetter`)                    |
-| `make install`     | Install the binary into `~/bin`                            |
-| `make run`         | Run Jetter with the example `.http` and environment files  |
-| `make test`        | Run all Go tests                                           |
-| `make local-setup` | Start local Keycloak + Wiremock via Docker Compose         |
-| `make help`        | Print a summary of all available commands                  |
+| Command            | Description                                               |
+|--------------------|-----------------------------------------------------------|
+| `make build`       | Build the project binary (`bin/jetter`)                   |
+| `make install`     | Install the binary into `~/bin`                           |
+| `make run`         | Run Jetter with the example `.http` and environment files |
+| `make test`        | Run all Go tests                                          |
+| `make local-setup` | Start local Keycloak + Wiremock via Docker Compose        |
+| `make coverage`    | Generate test coverage report                             |
+| `make help`        | Print a summary of all available commands                 |
 
 ---
 

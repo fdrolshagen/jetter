@@ -12,6 +12,7 @@ help:
 	@echo "  🏃 run           - Run Jetter with example HTTP file"
 	@echo "  🧪 test          - Run all Go tests"
 	@echo "  🐳 local-setup   - Start local environment with Docker Compose"
+	@echo "  📊 coverage      - Generate test coverage report"
 
 build:
 	@echo "🚀 Building the project..."
@@ -37,3 +38,9 @@ local-setup:
 	@echo "🐳 Starting local setup with Docker Compose..."
 	@docker-compose -f testing/docker-compose.yml up --remove-orphans
 	@echo "✅ Local setup complete!"
+
+coverage:
+	@echo "📊 Generating coverage report..."
+	@go test ./...  -coverpkg=./... -coverprofile ./coverage.out
+	@go tool cover -func ./coverage.out
+	@echo "✅ Coverage report generated"
