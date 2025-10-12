@@ -1,6 +1,7 @@
 # 🚀 Jetter
 
 [![build & test](https://github.com/fdrolshagen/jetter/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/fdrolshagen/jetter/actions/workflows/go.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/fdrolshagen/jetter)](https://goreportcard.com/report/github.com/fdrolshagen/jetter)
 ![GitHub Release](https://img.shields.io/github/v/release/fdrolshagen/jetter?include_prereleases&sort=semver&display_name=release)
 
 
