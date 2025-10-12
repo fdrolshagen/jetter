@@ -21,7 +21,10 @@ var (
 	showVersion bool
 )
 
-var version = "dev"
+const (
+	pendingIcon = "⏳"
+	successIcon = "✔"
+)
 
 func Execute() {
 	var exitCode int
@@ -46,7 +49,7 @@ func Execute() {
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		if showVersion {
-			fmt.Println(version)
+			fmt.Println(internal.Version)
 			os.Exit(0)
 		}
 	}
@@ -59,35 +62,22 @@ func Execute() {
 }
 
 func run() int {
-	pending := "⏳"
-	success := "✔"
-
 	msg := "Parsing .http file..."
-	fmt.Printf("%s %s", pending, msg)
+	fmt.Printf("%s %s", pendingIcon, msg)
 	collection, err := parser.ParseHttpFile(file)
 	if err != nil {
 		PrintError(err)
 		os.Exit(1)
 	}
-	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
+	fmt.Printf("\r%s %s\n", color.GreenString(successIcon), msg)
 
-	msg = "Reading Environment..."
-	fmt.Printf("%s %s", pending, msg)
-	env, err := parser.ParseEnv(envPath)
-	if err != nil {
-		PrintError(err)
-		return 1
+	if envPath != "" {
+		err = handleEnvInjection(envPath, &collection)
+		if err != nil {
+			PrintError(err)
+			os.Exit(1)
+		}
 	}
-	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
-
-	msg = "Injecting Variables..."
-	fmt.Printf("%s %s", pending, msg)
-	err = inject.Inject(&collection, env)
-	if err != nil {
-		PrintError(err)
-		return 1
-	}
-	fmt.Printf("\r%s %s\n", color.GreenString(success), msg)
 
 	s := internal.Scenario{
 		Concurrency: concurrency,
@@ -96,9 +86,9 @@ func run() int {
 	}
 
 	msg = "Running Scenario..."
-	fmt.Printf("%s %s", pending, msg)
+	fmt.Printf("%s %s", pendingIcon, msg)
 	result := executor.Submit(s)
-	fmt.Printf("\r%s %s\n\n", color.GreenString(success), msg)
+	fmt.Printf("\r%s %s\n\n", color.GreenString(successIcon), msg)
 
 	reporter.Report(result)
 	return map[bool]int{true: 1, false: 0}[result.AnyError]
@@ -108,4 +98,24 @@ func PrintError(err error) {
 	if err != nil {
 		fmt.Printf("\n\n❌ Error: %s\n", err.Error())
 	}
+}
+
+func handleEnvInjection(envPath string, collection *internal.Collection) error {
+	msg := "Reading Environment..."
+	fmt.Printf("%s %s", pendingIcon, msg)
+	env, err := parser.ParseEnv(envPath)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\r%s %s\n", color.GreenString(successIcon), msg)
+
+	msg = "Injecting Variables..."
+	fmt.Printf("%s %s", pendingIcon, msg)
+	err = inject.Inject(collection, env)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\r%s %s\n", color.GreenString(successIcon), msg)
+
+	return nil
 }

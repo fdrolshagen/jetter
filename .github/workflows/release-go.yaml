@@ -40,7 +40,7 @@ jobs:
         run: |
           mkdir -p build
           
-          LDFLAGS="-X 'github.com/fdrolshagen/jetter/cmd.version=${VERSION}'"
+          LDFLAGS="-X 'github.com/fdrolshagen/jetter/internal.Version=${VERSION}'"
           
           GOOS=linux   GOARCH=amd64 go build -ldflags="$LDFLAGS" -o build/jetter-$VERSION-linux
           GOOS=linux   GOARCH=arm64 go build -ldflags="$LDFLAGS" -o build/jetter-$VERSION-linux-arm64

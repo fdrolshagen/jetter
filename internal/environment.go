@@ -5,6 +5,25 @@ import (
 	"fmt"
 )
 
+// Config maps environment names to their respective configurations.
+// It serves as the top-level structure for managing multiple environments
+// and their variable and authentication definition.
+type Config map[string]Environment
+
+// Environment defines a named configuration context that can include variables
+// and authentication settings. It’s typically used to separate configurations
+// for different stages like development, staging, or production.
+type Environment struct {
+	Variables map[string]string
+	Security  Security `json:"Security"`
+}
+
+type Security struct {
+	Auth AuthMap `json:"Auth"`
+}
+
+type AuthMap map[string]AuthConfig
+
 type AuthConfig struct {
 	Type         string `json:"Type"`
 	TokenURL     string `json:"Token Url"`
@@ -15,19 +34,6 @@ type AuthConfig struct {
 	Password     string `json:"Password"`
 	Scope        string `json:"Scope"`
 }
-
-type AuthMap map[string]AuthConfig
-
-type Security struct {
-	Auth AuthMap `json:"Auth"`
-}
-
-type Environment struct {
-	Variables map[string]string
-	Security  Security `json:"Security"`
-}
-
-type Config map[string]Environment
 
 func (e *Environment) UnmarshalJSON(data []byte) error {
 	var raw map[string]json.RawMessage
