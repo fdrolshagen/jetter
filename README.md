@@ -190,14 +190,15 @@ make <command>
 
 Available commands:
 
-| Command            | Description                                                   |
-|--------------------|---------------------------------------------------------------|
-| `make build`       | Build the project binary (`bin/jetter`)                    |
-| `make install`     | Install the binary into `~/bin`                            |
-| `make run`         | Run Jetter with the example `.http` and environment files  |
-| `make test`        | Run all Go tests                                           |
-| `make local-setup` | Start local Keycloak + Wiremock via Docker Compose         |
-| `make help`        | Print a summary of all available commands                  |
+| Command            | Description                                               |
+|--------------------|-----------------------------------------------------------|
+| `make build`       | Build the project binary (`bin/jetter`)                   |
+| `make install`     | Install the binary into `~/bin`                           |
+| `make run`         | Run Jetter with the example `.http` and environment files |
+| `make test`        | Run all Go tests                                          |
+| `make local-setup` | Start local Keycloak + Wiremock via Docker Compose        |
+| `make coverage`    | Generate test coverage report                             |
+| `make help`        | Print a summary of all available commands                 |
 
 ---
 
