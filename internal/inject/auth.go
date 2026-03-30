@@ -27,26 +27,28 @@ func Auth(requests *[]internal.Request, env internal.Environment) error {
 				if strings.Contains(value, "{{$auth.token") {
 					re := regexp.MustCompile(`\{\{\$auth\.token\("([^"]+)"\)}}`)
 					matches := re.FindStringSubmatch(value)
+					if len(matches) != 2 {
+						return fmt.Errorf("invalid auth token placeholder in Authorization header: %s", value)
+					}
+
 					variable := matches[0]
 					authId := matches[1]
 
-					if len(matches) == 2 {
-						auth, ok := env.Security.Auth[authId]
-						if !ok {
-							return fmt.Errorf("failed to find auth for authId=%s", authId)
-						}
-
-						token, ok := tokens[authId]
-						if !ok {
-							var err error
-							token, err = GetToken(auth)
-							if err != nil {
-								return fmt.Errorf("failed to get token for authId=%s: %v\n", authId, err)
-							}
-							tokens[authId] = token
-						}
-						request.Headers[key] = strings.ReplaceAll(value, variable, token)
+					auth, ok := env.Security.Auth[authId]
+					if !ok {
+						return fmt.Errorf("failed to find auth for authId=%s", authId)
 					}
+
+					token, ok := tokens[authId]
+					if !ok {
+						var err error
+						token, err = GetToken(auth)
+						if err != nil {
+							return fmt.Errorf("failed to get token for authId=%s: %v\n", authId, err)
+						}
+						tokens[authId] = token
+					}
+					request.Headers[key] = strings.ReplaceAll(value, variable, token)
 				}
 			}
 		}

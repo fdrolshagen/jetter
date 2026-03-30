@@ -69,3 +69,44 @@ func TestEvaluate_EmptyCollection(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, requests, 0)
 }
+
+func TestEvaluate_KeepsUnknownPlaceholdersUnchanged(t *testing.T) {
+	c := &internal.Collection{
+		Variables: map[string]string{"KNOWN": "ok"},
+		Requests: []internal.Request{
+			{
+				Method:  "GET",
+				Url:     "http://localhost/users/{{UNKNOWN}}",
+				Body:    "{{KNOWN}} {{UNKNOWN}}",
+				Headers: map[string]string{"X-Test": "{{UNKNOWN}}"},
+			},
+		},
+	}
+
+	requests, err := Evaluate(c)
+	assert.NoError(t, err)
+	assert.Len(t, requests, 1)
+	assert.Equal(t, "http://localhost/users/{{UNKNOWN}}", requests[0].Url)
+	assert.Equal(t, "ok {{UNKNOWN}}", requests[0].Body)
+	assert.Equal(t, "{{UNKNOWN}}", requests[0].Headers["X-Test"])
+}
+
+func TestEvaluate_HandlesNilHeadersMap(t *testing.T) {
+	c := &internal.Collection{
+		Variables: map[string]string{"ID": "1"},
+		Requests: []internal.Request{
+			{
+				Method:  "GET",
+				Url:     "http://localhost/users/{{ID}}",
+				Headers: nil,
+			},
+		},
+	}
+
+	requests, err := Evaluate(c)
+	assert.NoError(t, err)
+	assert.Len(t, requests, 1)
+	assert.Equal(t, "http://localhost/users/1", requests[0].Url)
+	assert.NotNil(t, requests[0].Headers)
+	assert.Empty(t, requests[0].Headers)
+}

@@ -56,12 +56,42 @@ func TestSubmit_WithConcurrency(t *testing.T) {
 	assert.False(t, result.AnyError)
 }
 
+func TestSubmit_WithNonPositiveConcurrencyDefaultsToOneWorker(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	}))
+	defer server.Close()
+
+	s := internal.Scenario{
+		Duration:    25 * time.Millisecond,
+		Concurrency: 0,
+		Collection: &internal.Collection{
+			Requests: []internal.Request{{Method: "GET", Url: server.URL}},
+		},
+	}
+
+	result := Submit(s)
+	assert.NotEmpty(t, result.Executions)
+	assert.False(t, result.AnyError)
+}
+
 func TestExecuteScenario_ErrorInvalidRequest(t *testing.T) {
 	s := internal.Scenario{Collection: &internal.Collection{
 		Requests: []internal.Request{{Method: "", Url: ""}},
 	}}
 	exec := ExecuteScenario(context.Background(), s)
 	assert.True(t, exec.AnyError)
+}
+
+func TestExecuteScenario_ErrorWhenVariableEvaluationFails(t *testing.T) {
+	s := internal.Scenario{Collection: &internal.Collection{
+		Variables: map[string]string{"ID": "{{$random.unknown(1)}}"},
+		Requests:  []internal.Request{{Method: "GET", Url: "http://localhost/users/{{ID}}"}},
+	}}
+
+	exec := ExecuteScenario(context.Background(), s)
+	assert.True(t, exec.AnyError)
+	assert.Nil(t, exec.Responses)
 }
 
 func TestExecuteScenario_ExecutesRequests(t *testing.T) {
@@ -97,4 +127,56 @@ func TestExecuteRequest_RealRequest(t *testing.T) {
 	assert.Nil(t, resp.Error)
 	assert.Equal(t, 202, resp.Status)
 	assert.GreaterOrEqual(t, int(resp.Duration), 0)
+}
+
+func TestExecuteRequest_ContextCanceled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(50 * time.Millisecond)
+		w.WriteHeader(200)
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	resp := ExecuteRequest(ctx, internal.Request{Method: "GET", Url: server.URL})
+	assert.Error(t, resp.Error)
+	assert.Contains(t, resp.Error.Error(), "context canceled")
+}
+
+func TestExecuteRequest_ContextTimeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(100 * time.Millisecond)
+		w.WriteHeader(200)
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	resp := ExecuteRequest(ctx, internal.Request{Method: "GET", Url: server.URL})
+	assert.Error(t, resp.Error)
+	assert.Contains(t, resp.Error.Error(), "context deadline exceeded")
+}
+
+func TestWithDefaultTimeout_AddsDeadlineWhenMissing(t *testing.T) {
+	ctx, cancel := withDefaultTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	_, ok := ctx.Deadline()
+	assert.True(t, ok)
+}
+
+func TestWithDefaultTimeout_PreservesExistingDeadline(t *testing.T) {
+	baseCtx, baseCancel := context.WithTimeout(context.Background(), time.Second)
+	defer baseCancel()
+
+	ctx, cancel := withDefaultTimeout(baseCtx, 100*time.Millisecond)
+	defer cancel()
+
+	baseDeadline, baseOK := baseCtx.Deadline()
+	deadline, ok := ctx.Deadline()
+	assert.True(t, baseOK)
+	assert.True(t, ok)
+	assert.Equal(t, baseDeadline, deadline)
 }

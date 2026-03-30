@@ -128,6 +128,7 @@ func ExecuteRequest(ctx context.Context, r internal.Request) internal.Response {
 		result.Error = err
 		return result
 	}
+	defer resp.Body.Close()
 	elapsed := time.Since(start)
 
 	result.Duration = elapsed

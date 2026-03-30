@@ -45,7 +45,8 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+		rawLine := scanner.Text()
+		line := strings.TrimSpace(rawLine)
 		lineCounter++
 
 		if handleNewRequest(line, &requests, &request) {
@@ -84,7 +85,7 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 				state = StateIgnoredBodyPartRead
 				continue
 			}
-			request.Body += line + "\n"
+			request.Body += rawLine + "\n"
 			state = StateBodyPartRead
 		case StateMultilineScriptStarted:
 			if isScriptEnd(line) {
@@ -93,6 +94,10 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 		default:
 			return internal.Collection{}, fmt.Errorf("parsing error: invalid internal state")
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return internal.Collection{}, fmt.Errorf("parsing error: failed to read input: %w", err)
 	}
 
 	appendAndReset(&requests, &request)
@@ -135,7 +140,7 @@ func handleVariableDefinition(line string, vars map[string]string, lineCounter i
 		return nil
 	}
 
-	parts := strings.Split(line, "=")
+	parts := strings.SplitN(line, "=", 2)
 	if len(parts) != 2 {
 		return fmt.Errorf("parsing error: invalid variable definition at line %d", lineCounter)
 	}
