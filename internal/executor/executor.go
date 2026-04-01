@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+type ResponseCallback func(response internal.Response)
+
 // Submit executes the given scenario either once or concurrently for a specified duration.
 //
 // If the scenario has a duration of zero, a single execution is performed.
@@ -21,8 +23,12 @@ import (
 //
 // The function aggregates the results of all executions and indicates whether any of them encountered an error.
 func Submit(s internal.Scenario) internal.Result {
+	return SubmitWithResponseCallback(s, nil)
+}
+
+func SubmitWithResponseCallback(s internal.Scenario, responseCallback ResponseCallback) internal.Result {
 	if s.Duration == 0 {
-		execution := ExecuteScenario(context.Background(), s)
+		execution := executeScenario(context.Background(), s, responseCallback)
 		return internal.Result{
 			Executions: []internal.Execution{execution},
 			AnyError:   execution.AnyError,
@@ -49,7 +55,7 @@ func Submit(s internal.Scenario) internal.Result {
 				case <-ctx.Done():
 					return
 				default:
-					resultsCh <- ExecuteScenario(ctx, s)
+					resultsCh <- executeScenario(ctx, s, responseCallback)
 					time.Sleep(10 * time.Millisecond)
 				}
 			}
@@ -81,6 +87,10 @@ func Submit(s internal.Scenario) internal.Result {
 // The returned Execution summarizes the results of all requests and indicates whether
 // any of them encountered an error.
 func ExecuteScenario(ctx context.Context, s internal.Scenario) internal.Execution {
+	return executeScenario(ctx, s, nil)
+}
+
+func executeScenario(ctx context.Context, s internal.Scenario, responseCallback ResponseCallback) internal.Execution {
 	vars, err := s.Collection.EvaluateVariables()
 	if err != nil {
 		return internal.Execution{
@@ -92,26 +102,26 @@ func ExecuteScenario(ctx context.Context, s internal.Scenario) internal.Executio
 	responses := make([]internal.Response, 0, len(s.Collection.Requests))
 	anyError := false
 	for index, request := range s.Collection.Requests {
-		requestResponses := executeRequestWithLoop(ctx, request, vars)
-		for _, response := range requestResponses {
+		onResponse := func(response internal.Response) {
 			response.Index = index
 			if response.Error != nil {
 				anyError = true
 			}
+			if responseCallback != nil {
+				responseCallback(response)
+			}
 			responses = append(responses, response)
 		}
+
+		executeRequestWithLoop(ctx, request, vars, onResponse)
 	}
 
 	return internal.Execution{Responses: responses, AnyError: anyError}
 }
 
-func executeRequestWithLoop(ctx context.Context, request internal.Request, vars map[string]string) []internal.Response {
+func executeRequestWithLoop(ctx context.Context, request internal.Request, vars map[string]string, onResponse func(internal.Response)) []internal.Response {
 	responses := make([]internal.Response, 0, 1)
-	response := executeRequestAndPostScript(ctx, request, vars)
-	responses = append(responses, response)
-	if response.Error != nil || strings.TrimSpace(request.JetterWhile) == "" {
-		return responses
-	}
+	whileEnabled := strings.TrimSpace(request.JetterWhile) != ""
 
 	maxIterations := request.JetterMaxIterations
 	if maxIterations <= 0 {
@@ -121,21 +131,43 @@ func executeRequestWithLoop(ctx context.Context, request internal.Request, vars 
 	whileCondition := replaceVariablesInString(request.JetterWhile, vars)
 	iteration := 1
 	for {
+		response := executeRequestAndPostScript(ctx, request, vars)
+		if response.Error != nil {
+			responses = append(responses, response)
+			onResponse(response)
+			return responses
+		}
+
+		if !whileEnabled {
+			responses = append(responses, response)
+			onResponse(response)
+			return responses
+		}
+
 		shouldContinue, err := script.EvaluateWhileCondition(whileCondition, response, vars)
 		if err != nil {
-			responses[len(responses)-1].Error = err
+			response.Error = err
+			responses = append(responses, response)
+			onResponse(response)
 			return responses
 		}
 		if !shouldContinue {
+			responses = append(responses, response)
+			onResponse(response)
 			return responses
 		}
 
 		if iteration >= maxIterations {
 			if shouldFailOnTimeout(request.JetterOnTimeout) {
-				responses[len(responses)-1].Error = fmt.Errorf("jetter while condition still true after %d iterations", iteration)
+				response.Error = fmt.Errorf("jetter while condition still true after %d iterations", iteration)
 			}
+			responses = append(responses, response)
+			onResponse(response)
 			return responses
 		}
+
+		responses = append(responses, response)
+		onResponse(response)
 
 		if err := sleepWithContext(ctx, request.JetterSleep); err != nil {
 			responses[len(responses)-1].Error = err
@@ -143,11 +175,6 @@ func executeRequestWithLoop(ctx context.Context, request internal.Request, vars 
 		}
 
 		iteration++
-		response = executeRequestAndPostScript(ctx, request, vars)
-		responses = append(responses, response)
-		if response.Error != nil {
-			return responses
-		}
 	}
 }
 

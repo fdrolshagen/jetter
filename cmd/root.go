@@ -86,11 +86,16 @@ func run() int {
 	}
 
 	msg = "Running Scenario..."
-	fmt.Printf("%s %s", pendingIcon, msg)
-	result := executor.Submit(s)
-	fmt.Printf("\r%s %s\n\n", color.GreenString(successIcon), msg)
+	fmt.Printf("%s %s\n", pendingIcon, msg)
+	liveReporter := reporter.NewLiveReporter(200 * time.Millisecond)
+	liveReporter.Start()
+	result := executor.SubmitWithResponseCallback(s, liveReporter.AddResponse)
+	liveReporter.Stop()
+	fmt.Printf("%s %s\n\n", color.GreenString(successIcon), msg)
 
-	reporter.Report(result)
+	if !liveReporter.Enabled() {
+		reporter.Report(result)
+	}
 	return map[bool]int{true: 1, false: 0}[result.AnyError]
 }
 
