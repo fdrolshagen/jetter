@@ -41,6 +41,6 @@ local-setup:
 
 coverage:
 	@echo "📊 Generating coverage report..."
-	@go test ./...  -coverpkg=./... -coverprofile ./coverage.out
+	@go test ./...  -coverpkg=./... -coverprofile ./bin/coverage.out
 	@go tool cover -func ./coverage.out
 	@echo "✅ Coverage report generated"
