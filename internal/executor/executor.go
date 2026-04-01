@@ -3,6 +3,7 @@ package executor
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/fdrolshagen/jetter/internal"
 	"github.com/fdrolshagen/jetter/internal/script"
@@ -14,6 +15,14 @@ import (
 )
 
 type ResponseCallback func(response internal.Response)
+
+type jetterTimeoutError struct {
+	iterations int
+}
+
+func (e *jetterTimeoutError) Error() string {
+	return fmt.Sprintf("jetter while condition still true after %d iterations", e.iterations)
+}
 
 // Submit executes the given scenario either once or concurrently for a specified duration.
 //
@@ -102,10 +111,15 @@ func executeScenario(ctx context.Context, s internal.Scenario, responseCallback 
 	responses := make([]internal.Response, 0, len(s.Collection.Requests))
 	anyError := false
 	for index, request := range s.Collection.Requests {
+		shouldStop := false
 		onResponse := func(response internal.Response) {
 			response.Index = index
 			if response.Error != nil {
 				anyError = true
+				var timeoutErr *jetterTimeoutError
+				if errors.As(response.Error, &timeoutErr) {
+					shouldStop = true
+				}
 			}
 			if responseCallback != nil {
 				responseCallback(response)
@@ -114,6 +128,9 @@ func executeScenario(ctx context.Context, s internal.Scenario, responseCallback 
 		}
 
 		executeRequestWithLoop(ctx, request, vars, onResponse)
+		if shouldStop {
+			break
+		}
 	}
 
 	return internal.Execution{Responses: responses, AnyError: anyError}
@@ -159,7 +176,7 @@ func executeRequestWithLoop(ctx context.Context, request internal.Request, vars 
 
 		if iteration >= maxIterations {
 			if shouldFailOnTimeout(request.JetterOnTimeout) {
-				response.Error = fmt.Errorf("jetter while condition still true after %d iterations", iteration)
+				response.Error = &jetterTimeoutError{iterations: iteration}
 			}
 			responses = append(responses, response)
 			onResponse(response)

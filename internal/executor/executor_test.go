@@ -263,6 +263,34 @@ func TestExecuteScenario_JetterWhileTimeoutContinuesWhenConfigured(t *testing.T)
 	assert.NoError(t, exec.Responses[1].Error)
 }
 
+func TestExecuteScenario_JetterWhileTimeoutFailStopsFollowingRequests(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"status":"PENDING"}`))
+	}))
+	defer server.Close()
+
+	s := internal.Scenario{Collection: &internal.Collection{Requests: []internal.Request{
+		{
+			Method:              "GET",
+			Url:                 server.URL,
+			JetterWhile:         `response.body.status != "DONE"`,
+			JetterMaxIterations: 2,
+			JetterOnTimeout:     "fail",
+		},
+		{
+			Method: "GET",
+			Url:    server.URL,
+		},
+	}}}
+
+	exec := ExecuteScenario(context.Background(), s)
+	assert.True(t, exec.AnyError)
+	assert.Len(t, exec.Responses, 2)
+	assert.Error(t, exec.Responses[1].Error)
+}
+
 func TestExecuteRequest_ErrorOnBadRequest(t *testing.T) {
 	resp := ExecuteRequest(context.Background(), internal.Request{Method: "BAD", Url: ":://"})
 	assert.NotNil(t, resp.Error)
