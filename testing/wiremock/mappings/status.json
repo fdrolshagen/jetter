@@ -1,0 +1,244 @@
+{
+  "mappings": [
+    {
+      "priority": 1,
+      "scenarioName": "status-polling",
+      "requiredScenarioState": "Started",
+      "newScenarioState": "PENDING_2",
+      "request": {
+        "method": "GET",
+        "url": "/status",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "status": "PENDING"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "scenarioName": "status-polling",
+      "requiredScenarioState": "PENDING_2",
+      "newScenarioState": "PENDING_3",
+      "request": {
+        "method": "GET",
+        "url": "/status",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "status": "PENDING"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "scenarioName": "status-polling",
+      "requiredScenarioState": "PENDING_3",
+      "newScenarioState": "PENDING_4",
+      "request": {
+        "method": "GET",
+        "url": "/status",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "status": "PENDING"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "scenarioName": "status-polling",
+      "requiredScenarioState": "PENDING_4",
+      "newScenarioState": "PENDING_5",
+      "request": {
+        "method": "GET",
+        "url": "/status",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "status": "PENDING"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "scenarioName": "status-polling",
+      "requiredScenarioState": "PENDING_5",
+      "newScenarioState": "PENDING_6",
+      "request": {
+        "method": "GET",
+        "url": "/status",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "status": "PENDING"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "scenarioName": "status-polling",
+      "requiredScenarioState": "PENDING_6",
+      "newScenarioState": "PENDING_7",
+      "request": {
+        "method": "GET",
+        "url": "/status",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "status": "PENDING"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "scenarioName": "status-polling",
+      "requiredScenarioState": "PENDING_7",
+      "newScenarioState": "PENDING_8",
+      "request": {
+        "method": "GET",
+        "url": "/status",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "status": "PENDING"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "scenarioName": "status-polling",
+      "requiredScenarioState": "PENDING_8",
+      "newScenarioState": "PENDING_9",
+      "request": {
+        "method": "GET",
+        "url": "/status",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "status": "PENDING"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "scenarioName": "status-polling",
+      "requiredScenarioState": "PENDING_9",
+      "newScenarioState": "PENDING_10",
+      "request": {
+        "method": "GET",
+        "url": "/status",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "status": "PENDING"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "scenarioName": "status-polling",
+      "requiredScenarioState": "PENDING_10",
+      "newScenarioState": "Started",
+      "request": {
+        "method": "GET",
+        "url": "/status",
+        "headers": {
+          "Authorization": {
+            "matches": "Bearer .*"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "status": "SUCCESS"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+  ]
+}

@@ -20,15 +20,15 @@ Authorization: Bearer {{$auth.token("auth-id")}}
 
 > {% client.global.set("NEW_TSID", response.body.id) %}
 
-### GET /users/{tsid}/status - wait until processing is DONE
-GET {{URL}}/users/{{NEW_TSID}
-Authorization: Bearer {{$auth.token("auth-id")}}
-
-#@jetter.while = response.body.id != "1337"
-#@jetter.maxIterations = 10
-#@jetter.sleep = 2s
-#@jetter.onTimeout = continue
-
 ### DELETE /users/{tsid} - delete a user by id
 DELETE {{URL}}/users/{{NEW_TSID}}
 Authorization: Bearer {{$auth.token("auth-id")}}
+
+### GET /status - wait until processing is SUCCESS
+GET {{URL}}/status
+Authorization: Bearer {{$auth.token("auth-id")}}
+
+@jetter.while = response.body.status != "SUCCESS"
+@jetter.maxIterations = 20
+@jetter.sleep = 1s
+@jetter.onTimeout = fail
