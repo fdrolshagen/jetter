@@ -2,6 +2,8 @@ package parser
 
 import (
 	"github.com/stretchr/testify/assert"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -384,7 +386,7 @@ func TestParseHttp_ShouldParseCommentStyleJetterLoopDirectives(t *testing.T) {
 	assert.Equal(t, "fail", req.JetterOnTimeout)
 }
 
-func TestParseHttp_ShouldIgnoreFileInAndOut(t *testing.T) {
+func TestParseHttp_ShouldIgnoreFileOut(t *testing.T) {
 	content := strings.TrimSpace(`
 		### Request With File Out
 		POST http://localhost:8081/commented
@@ -399,19 +401,28 @@ func TestParseHttp_ShouldIgnoreFileInAndOut(t *testing.T) {
 	assert.Len(t, c.Requests, 1)
 	body := c.Requests[0].Body
 	assert.NotContains(t, body, "file.txt")
+}
 
-	content = strings.TrimSpace(`
-		### Request With File Out
+func TestParseHttpFile_ShouldReadBodyFromFileInput(t *testing.T) {
+	dir := t.TempDir()
+	bodyFilePath := filepath.Join(dir, "body.json")
+	err := os.WriteFile(bodyFilePath, []byte("{\"name\":\"from-file\"}\n"), 0644)
+	assert.NoError(t, err)
+
+	httpFilePath := filepath.Join(dir, "request.http")
+	err = os.WriteFile(httpFilePath, []byte(strings.TrimSpace(`
+		### Request With File Input
 		POST http://localhost:8081/commented
 		Content-Type: application/json
 
-		< file.txt
-		`)
+		< body.json
+	`)), 0644)
+	assert.NoError(t, err)
 
-	c, err = ParseHttp(strings.NewReader(content))
+	c, err := ParseHttpFile(httpFilePath)
 
 	assert.Nil(t, err)
 	assert.Len(t, c.Requests, 1)
-	body = c.Requests[0].Body
-	assert.NotContains(t, body, "file.txt")
+	body := c.Requests[0].Body
+	assert.Contains(t, body, "from-file")
 }

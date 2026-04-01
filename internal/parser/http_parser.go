@@ -6,6 +6,7 @@ import (
 	"github.com/fdrolshagen/jetter/internal"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -33,10 +34,14 @@ func ParseHttpFile(filename string) (internal.Collection, error) {
 	}
 	defer file.Close()
 
-	return ParseHttp(file)
+	return parseHttp(file, filepath.Dir(filename))
 }
 
 func ParseHttp(r io.Reader) (internal.Collection, error) {
+	return parseHttp(r, "")
+}
+
+func parseHttp(r io.Reader, basePath string) (internal.Collection, error) {
 	var requests []internal.Request
 	var vars = map[string]string{}
 
@@ -88,6 +93,15 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 				if err != nil {
 					return internal.Collection{}, err
 				}
+				continue
+			}
+			if isFileInput(line) {
+				content, err := readBodyFromFile(line, basePath)
+				if err != nil {
+					return internal.Collection{}, fmt.Errorf("parsing error: failed to read body file at line %d: %w", lineCounter, err)
+				}
+				request.Body += content
+				state = StateBodyPartRead
 				continue
 			}
 			if isPostRequestScriptStart(line) {
@@ -148,6 +162,10 @@ func isScriptOrFile(line string) bool {
 	return strings.HasPrefix(line, ">") || strings.HasPrefix(line, "<")
 }
 
+func isFileInput(line string) bool {
+	return strings.HasPrefix(line, "<")
+}
+
 func isJetterDirective(line string) bool {
 	trimmed := strings.TrimSpace(line)
 	return strings.HasPrefix(trimmed, "@jetter.") || strings.HasPrefix(trimmed, "#@jetter.")
@@ -186,6 +204,25 @@ func appendScriptLine(request *internal.Request, scriptLine string) {
 		return
 	}
 	request.PostScript += scriptLine + "\n"
+}
+
+func readBodyFromFile(line string, basePath string) (string, error) {
+	filePath := strings.TrimSpace(strings.TrimPrefix(line, "<"))
+	if filePath == "" {
+		return "", fmt.Errorf("missing file path")
+	}
+
+	resolvedPath := filePath
+	if !filepath.IsAbs(filePath) && basePath != "" {
+		resolvedPath = filepath.Join(basePath, filePath)
+	}
+
+	content, err := os.ReadFile(resolvedPath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
 }
 
 func handleJetterDirectiveLine(line string, request *internal.Request, lineCounter int) (bool, error) {
