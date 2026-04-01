@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"github.com/fdrolshagen/jetter/internal"
+	"github.com/fdrolshagen/jetter/internal/script"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -77,7 +79,7 @@ func Submit(s internal.Scenario) internal.Result {
 // The returned Execution summarizes the results of all requests and indicates whether
 // any of them encountered an error.
 func ExecuteScenario(ctx context.Context, s internal.Scenario) internal.Execution {
-	requests, err := Evaluate(s.Collection)
+	vars, err := s.Collection.EvaluateVariables()
 	if err != nil {
 		return internal.Execution{
 			Responses: nil,
@@ -85,15 +87,36 @@ func ExecuteScenario(ctx context.Context, s internal.Scenario) internal.Executio
 		}
 	}
 
-	responses := make([]internal.Response, 0, len(requests))
+	responses := make([]internal.Response, 0, len(s.Collection.Requests))
 	anyError := false
-	for index, request := range requests {
-		response := ExecuteRequest(ctx, request)
+	for index, request := range s.Collection.Requests {
+		evaluatedRequest := request
+		evaluatedRequest.Url = replaceVariablesInString(request.Url, vars)
+		evaluatedRequest.Body = replaceVariablesInString(request.Body, vars)
+
+		evaluatedHeaders := make(map[string]string, len(request.Headers))
+		for key, value := range request.Headers {
+			evaluatedHeaders[key] = replaceVariablesInString(value, vars)
+		}
+		evaluatedRequest.Headers = evaluatedHeaders
+
+		response := ExecuteRequest(ctx, evaluatedRequest)
 		response.Index = index
-		responses = append(responses, response)
 		if response.Error != nil {
 			anyError = true
+			responses = append(responses, response)
+			continue
 		}
+
+		postScript := replaceVariablesInString(request.PostScript, vars)
+		if postScript != "" {
+			if err := script.ExecutePostScript(postScript, response, vars); err != nil {
+				response.Error = err
+				anyError = true
+			}
+		}
+
+		responses = append(responses, response)
 	}
 
 	return internal.Execution{Responses: responses, AnyError: anyError}
@@ -129,10 +152,25 @@ func ExecuteRequest(ctx context.Context, r internal.Request) internal.Response {
 		return result
 	}
 	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		result.Error = err
+		return result
+	}
 	elapsed := time.Since(start)
+
+	headers := make(map[string]string, len(resp.Header))
+	for key, values := range resp.Header {
+		if len(values) == 0 {
+			continue
+		}
+		headers[key] = values[0]
+	}
 
 	result.Duration = elapsed
 	result.Status = resp.StatusCode
+	result.Headers = headers
+	result.Body = string(body)
 	return result
 }
 

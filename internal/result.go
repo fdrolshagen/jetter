@@ -25,6 +25,8 @@ type Response struct {
 	Index    int
 	Name     string
 	Status   int
+	Headers  map[string]string
+	Body     string
 	Duration time.Duration
 	Error    error
 }

@@ -10,11 +10,12 @@ import (
 // It defines all necessary details for execution, including the method, target URL,
 // optional headers, and request body content.
 type Request struct {
-	Name    string
-	Method  string
-	Url     string
-	Headers map[string]string
-	Body    string
+	Name       string
+	Method     string
+	Url        string
+	Headers    map[string]string
+	Body       string
+	PostScript string
 }
 
 // Collection represents a reusable group of HTTP requests that make up

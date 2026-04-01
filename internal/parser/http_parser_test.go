@@ -282,6 +282,7 @@ func TestParseHttp_ShouldIgnoreSingleLineScript(t *testing.T) {
 	body := c.Requests[0].Body
 	assert.Contains(t, body, "foo")
 	assert.NotContains(t, body, "console.log")
+	assert.Equal(t, "console.log(response.status)\n", c.Requests[0].PostScript)
 }
 
 func TestParseHttp_ShouldIgnoreScriptBlock(t *testing.T) {
@@ -308,6 +309,23 @@ func TestParseHttp_ShouldIgnoreScriptBlock(t *testing.T) {
 	body := c.Requests[0].Body
 	assert.Contains(t, body, "foo")
 	assert.NotContains(t, body, "console.log")
+	assert.Equal(t, "console.log(response.status)\n", c.Requests[0].PostScript)
+}
+
+func TestParseHttp_ShouldParsePostScriptWithoutBody(t *testing.T) {
+	content := strings.TrimSpace(`
+		### Request With Post Script
+		GET http://localhost:8081/commented
+
+		> {% client.global.set("TOKEN", response.body.token) %}
+	`)
+
+	c, err := ParseHttp(strings.NewReader(content))
+
+	assert.Nil(t, err)
+	assert.Len(t, c.Requests, 1)
+	assert.Equal(t, "", c.Requests[0].Body)
+	assert.Equal(t, "client.global.set(\"TOKEN\", response.body.token)\n", c.Requests[0].PostScript)
 }
 
 func TestParseHttp_ShouldIgnoreFileInAndOut(t *testing.T) {

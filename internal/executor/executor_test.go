@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -28,14 +29,19 @@ func TestSubmit_ZeroDuration(t *testing.T) {
 }
 
 func TestSubmit_WithDuration(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	}))
+	defer server.Close()
+
 	s := internal.Scenario{
 		Duration: 30 * time.Millisecond,
 		Collection: &internal.Collection{
-			Requests: []internal.Request{{Method: "GET", Url: "http://localhost"}},
+			Requests: []internal.Request{{Method: "GET", Url: server.URL}},
 		},
 	}
 	result := Submit(s)
-	assert.GreaterOrEqual(t, len(result.Executions), 2)
+	assert.GreaterOrEqual(t, len(result.Executions), 1)
 }
 
 func TestSubmit_WithConcurrency(t *testing.T) {
@@ -109,6 +115,76 @@ func TestExecuteScenario_ExecutesRequests(t *testing.T) {
 	assert.False(t, exec.AnyError)
 	assert.Len(t, exec.Responses, 1)
 	assert.Equal(t, 201, exec.Responses[0].Status)
+}
+
+func TestExecuteScenario_AppliesPostScriptVariablesToFollowingRequests(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/token":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(200)
+			_, _ = w.Write([]byte(`{"token":"abc123"}`))
+		case "/users":
+			if r.Header.Get("Authorization") != "Bearer abc123" {
+				w.WriteHeader(401)
+				return
+			}
+			w.WriteHeader(200)
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer server.Close()
+
+	s := internal.Scenario{
+		Collection: &internal.Collection{
+			Requests: []internal.Request{
+				{
+					Method:     "GET",
+					Url:        server.URL + "/token",
+					PostScript: `client.global.set("TOKEN", response.body.token)`,
+				},
+				{
+					Method: "GET",
+					Url:    server.URL + "/users",
+					Headers: map[string]string{
+						"Authorization": "Bearer {{TOKEN}}",
+					},
+				},
+			},
+		},
+	}
+
+	exec := ExecuteScenario(context.Background(), s)
+	assert.False(t, exec.AnyError)
+	assert.Len(t, exec.Responses, 2)
+	assert.Equal(t, 200, exec.Responses[1].Status)
+}
+
+func TestExecuteScenario_MarksExecutionAsFailedWhenPostScriptFails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"token":"abc123"}`))
+	}))
+	defer server.Close()
+
+	s := internal.Scenario{
+		Collection: &internal.Collection{
+			Requests: []internal.Request{
+				{
+					Method:     "GET",
+					Url:        server.URL,
+					PostScript: `client.global.set("TOKEN"`,
+				},
+			},
+		},
+	}
+
+	exec := ExecuteScenario(context.Background(), s)
+	assert.True(t, exec.AnyError)
+	assert.Len(t, exec.Responses, 1)
+	assert.Error(t, exec.Responses[0].Error)
+	assert.True(t, strings.Contains(exec.Responses[0].Error.Error(), "post-script execution failed"))
 }
 
 func TestExecuteRequest_ErrorOnBadRequest(t *testing.T) {

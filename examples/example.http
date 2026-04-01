@@ -18,6 +18,8 @@ Content-Type: application/json
 GET {{URL}}/users/{{tsid}}
 Authorization: Bearer {{$auth.token("auth-id")}}
 
+> {% client.global.set("NEW_TSID", response.body.id) %}
+
 ### DELETE /users/{tsid} - delete a user by id
-DELETE {{URL}}/users/{{tsid}}
+DELETE {{URL}}/users/{{NEW_TSID}}
 Authorization: Bearer {{$auth.token("auth-id")}}

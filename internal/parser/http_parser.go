@@ -77,8 +77,13 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 			}
 			state = StateHttpHeaderRead
 		case StateHeaderBodySeparationRead, StateBodyPartRead, StateIgnoredBodyPartRead:
-			if isMultilineScriptStart(line) {
-				state = StateMultilineScriptStarted
+			if isPostRequestScriptStart(line) {
+				if isSingleLineScript(line) {
+					appendScriptLine(&request, extractSingleLineScript(line))
+				} else {
+					appendScriptLine(&request, extractScriptStartLine(line))
+					state = StateMultilineScriptStarted
+				}
 				continue
 			}
 			if isEmptyLine(line) || isScriptOrFile(line) {
@@ -89,8 +94,11 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 			state = StateBodyPartRead
 		case StateMultilineScriptStarted:
 			if isScriptEnd(line) {
+				appendScriptLine(&request, extractScriptEndLine(line))
 				state = StateIgnoredBodyPartRead
+				continue
 			}
+			appendScriptLine(&request, line)
 		default:
 			return internal.Collection{}, fmt.Errorf("parsing error: invalid internal state")
 		}
@@ -127,12 +135,39 @@ func isScriptOrFile(line string) bool {
 	return strings.HasPrefix(line, ">") || strings.HasPrefix(line, "<")
 }
 
-func isMultilineScriptStart(line string) bool {
-	return strings.HasPrefix(line, "> {%") && !strings.HasSuffix(line, "%}")
+func isPostRequestScriptStart(line string) bool {
+	return strings.HasPrefix(line, "> {%")
 }
 
 func isScriptEnd(line string) bool {
 	return strings.HasSuffix(line, "%}")
+}
+
+func isSingleLineScript(line string) bool {
+	return isPostRequestScriptStart(line) && isScriptEnd(line)
+}
+
+func extractSingleLineScript(line string) string {
+	line = strings.TrimPrefix(line, "> {%")
+	line = strings.TrimSuffix(line, "%}")
+	return strings.TrimSpace(line)
+}
+
+func extractScriptStartLine(line string) string {
+	line = strings.TrimPrefix(line, "> {%")
+	return strings.TrimSpace(line)
+}
+
+func extractScriptEndLine(line string) string {
+	line = strings.TrimSuffix(line, "%}")
+	return strings.TrimSpace(line)
+}
+
+func appendScriptLine(request *internal.Request, scriptLine string) {
+	if scriptLine == "" {
+		return
+	}
+	request.PostScript += scriptLine + "\n"
 }
 
 func handleVariableDefinition(line string, vars map[string]string, lineCounter int) error {
