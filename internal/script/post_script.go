@@ -18,18 +18,7 @@ func ExecutePostScript(postScript string, response internal.Response, variables 
 	}
 
 	runtime := goja.New()
-
-	body := any(response.Body)
-	var parsedBody any
-	if err := json.Unmarshal([]byte(response.Body), &parsedBody); err == nil {
-		body = parsedBody
-	}
-
-	responseData := map[string]any{
-		"status":  response.Status,
-		"headers": response.Headers,
-		"body":    body,
-	}
+	responseData := buildResponseData(response)
 
 	clientData := map[string]any{
 		"global": map[string]any{
@@ -71,6 +60,43 @@ func ExecutePostScript(postScript string, response internal.Response, variables 
 	}
 
 	return nil
+}
+
+func EvaluateWhileCondition(expression string, response internal.Response, variables map[string]string) (bool, error) {
+	if strings.TrimSpace(expression) == "" {
+		return false, nil
+	}
+
+	runtime := goja.New()
+	responseData := buildResponseData(response)
+
+	if err := runtime.Set("response", responseData); err != nil {
+		return false, fmt.Errorf("failed to prepare response context: %w", err)
+	}
+	if err := runtime.Set("vars", variables); err != nil {
+		return false, fmt.Errorf("failed to prepare variable context: %w", err)
+	}
+
+	value, err := runtime.RunString(expression)
+	if err != nil {
+		return false, fmt.Errorf("while-condition execution failed: %w", err)
+	}
+
+	return value.ToBoolean(), nil
+}
+
+func buildResponseData(response internal.Response) map[string]any {
+	body := any(response.Body)
+	var parsedBody any
+	if err := json.Unmarshal([]byte(response.Body), &parsedBody); err == nil {
+		body = parsedBody
+	}
+
+	return map[string]any{
+		"status":  response.Status,
+		"headers": response.Headers,
+		"body":    body,
+	}
 }
 
 func stringifyConsoleArg(value any) string {

@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type State int
@@ -65,6 +66,12 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 			}
 			state = StateHttpConfigLineRead
 		case StateHttpConfigLineRead, StateHttpHeaderRead:
+			if handled, err := handleJetterDirectiveLine(line, &request, lineCounter); handled {
+				if err != nil {
+					return internal.Collection{}, err
+				}
+				continue
+			}
 			if isHeaderBodySeparation(line) {
 				state = StateHeaderBodySeparationRead
 				break
@@ -77,6 +84,12 @@ func ParseHttp(r io.Reader) (internal.Collection, error) {
 			}
 			state = StateHttpHeaderRead
 		case StateHeaderBodySeparationRead, StateBodyPartRead, StateIgnoredBodyPartRead:
+			if handled, err := handleJetterDirectiveLine(line, &request, lineCounter); handled {
+				if err != nil {
+					return internal.Collection{}, err
+				}
+				continue
+			}
 			if isPostRequestScriptStart(line) {
 				if isSingleLineScript(line) {
 					appendScriptLine(&request, extractSingleLineScript(line))
@@ -135,6 +148,11 @@ func isScriptOrFile(line string) bool {
 	return strings.HasPrefix(line, ">") || strings.HasPrefix(line, "<")
 }
 
+func isJetterDirective(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	return strings.HasPrefix(trimmed, "@jetter.") || strings.HasPrefix(trimmed, "#@jetter.")
+}
+
 func isPostRequestScriptStart(line string) bool {
 	return strings.HasPrefix(line, "> {%")
 }
@@ -168,6 +186,48 @@ func appendScriptLine(request *internal.Request, scriptLine string) {
 		return
 	}
 	request.PostScript += scriptLine + "\n"
+}
+
+func handleJetterDirectiveLine(line string, request *internal.Request, lineCounter int) (bool, error) {
+	if !isJetterDirective(line) {
+		return false, nil
+	}
+
+	parts := strings.SplitN(line, "=", 2)
+	if len(parts) != 2 {
+		return true, fmt.Errorf("parsing error: invalid @jetter directive at line %d", lineCounter)
+	}
+
+	key := strings.TrimSpace(parts[0])
+	key = strings.TrimPrefix(key, "#")
+	value := strings.TrimSpace(parts[1])
+
+	switch key {
+	case "@jetter.while":
+		request.JetterWhile = value
+	case "@jetter.maxIterations":
+		maxIterations, err := strconv.Atoi(value)
+		if err != nil || maxIterations <= 0 {
+			return true, fmt.Errorf("parsing error: invalid @jetter.maxIterations at line %d", lineCounter)
+		}
+		request.JetterMaxIterations = maxIterations
+	case "@jetter.sleep":
+		sleep, err := time.ParseDuration(value)
+		if err != nil || sleep < 0 {
+			return true, fmt.Errorf("parsing error: invalid @jetter.sleep at line %d", lineCounter)
+		}
+		request.JetterSleep = sleep
+	case "@jetter.onTimeout":
+		onTimeout := strings.ToLower(value)
+		if onTimeout != "fail" && onTimeout != "continue" {
+			return true, fmt.Errorf("parsing error: invalid @jetter.onTimeout at line %d", lineCounter)
+		}
+		request.JetterOnTimeout = onTimeout
+	default:
+		return true, fmt.Errorf("parsing error: unknown @jetter directive at line %d", lineCounter)
+	}
+
+	return true, nil
 }
 
 func handleVariableDefinition(line string, vars map[string]string, lineCounter int) error {

@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseHttp_ShouldParseSingleRequest(t *testing.T) {
@@ -326,6 +327,61 @@ func TestParseHttp_ShouldParsePostScriptWithoutBody(t *testing.T) {
 	assert.Len(t, c.Requests, 1)
 	assert.Equal(t, "", c.Requests[0].Body)
 	assert.Equal(t, "client.global.set(\"TOKEN\", response.body.token)\n", c.Requests[0].PostScript)
+}
+
+func TestParseHttp_ShouldParseJetterLoopDirectives(t *testing.T) {
+	content := strings.TrimSpace(`
+		### Wait for completion
+		GET http://localhost:8081/jobs/123
+		@jetter.while = response.body.status != "DONE"
+		@jetter.maxIterations = 30
+		@jetter.sleep = 2s
+		@jetter.onTimeout = fail
+	`)
+
+	c, err := ParseHttp(strings.NewReader(content))
+
+	assert.NoError(t, err)
+	assert.Len(t, c.Requests, 1)
+	req := c.Requests[0]
+	assert.Equal(t, `response.body.status != "DONE"`, req.JetterWhile)
+	assert.Equal(t, 30, req.JetterMaxIterations)
+	assert.Equal(t, 2*time.Second, req.JetterSleep)
+	assert.Equal(t, "fail", req.JetterOnTimeout)
+}
+
+func TestParseHttp_ShouldErrorOnInvalidJetterDirective(t *testing.T) {
+	content := strings.TrimSpace(`
+		### Wait for completion
+		GET http://localhost:8081/jobs/123
+		@jetter.maxIterations = abc
+	`)
+
+	_, err := ParseHttp(strings.NewReader(content))
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid @jetter.maxIterations")
+}
+
+func TestParseHttp_ShouldParseCommentStyleJetterLoopDirectives(t *testing.T) {
+	content := strings.TrimSpace(`
+		### Wait for completion
+		GET http://localhost:8081/jobs/123
+		#@jetter.while = response.body.status != "DONE"
+		#@jetter.maxIterations = 30
+		#@jetter.sleep = 2s
+		#@jetter.onTimeout = fail
+	`)
+
+	c, err := ParseHttp(strings.NewReader(content))
+
+	assert.NoError(t, err)
+	assert.Len(t, c.Requests, 1)
+	req := c.Requests[0]
+	assert.Equal(t, `response.body.status != "DONE"`, req.JetterWhile)
+	assert.Equal(t, 30, req.JetterMaxIterations)
+	assert.Equal(t, 2*time.Second, req.JetterSleep)
+	assert.Equal(t, "fail", req.JetterOnTimeout)
 }
 
 func TestParseHttp_ShouldIgnoreFileInAndOut(t *testing.T) {

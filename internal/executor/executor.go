@@ -3,10 +3,12 @@ package executor
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/fdrolshagen/jetter/internal"
 	"github.com/fdrolshagen/jetter/internal/script"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -90,36 +92,112 @@ func ExecuteScenario(ctx context.Context, s internal.Scenario) internal.Executio
 	responses := make([]internal.Response, 0, len(s.Collection.Requests))
 	anyError := false
 	for index, request := range s.Collection.Requests {
-		evaluatedRequest := request
-		evaluatedRequest.Url = replaceVariablesInString(request.Url, vars)
-		evaluatedRequest.Body = replaceVariablesInString(request.Body, vars)
-
-		evaluatedHeaders := make(map[string]string, len(request.Headers))
-		for key, value := range request.Headers {
-			evaluatedHeaders[key] = replaceVariablesInString(value, vars)
-		}
-		evaluatedRequest.Headers = evaluatedHeaders
-
-		response := ExecuteRequest(ctx, evaluatedRequest)
-		response.Index = index
-		if response.Error != nil {
-			anyError = true
-			responses = append(responses, response)
-			continue
-		}
-
-		postScript := replaceVariablesInString(request.PostScript, vars)
-		if postScript != "" {
-			if err := script.ExecutePostScript(postScript, response, vars); err != nil {
-				response.Error = err
+		requestResponses := executeRequestWithLoop(ctx, request, vars)
+		for _, response := range requestResponses {
+			response.Index = index
+			if response.Error != nil {
 				anyError = true
 			}
+			responses = append(responses, response)
 		}
-
-		responses = append(responses, response)
 	}
 
 	return internal.Execution{Responses: responses, AnyError: anyError}
+}
+
+func executeRequestWithLoop(ctx context.Context, request internal.Request, vars map[string]string) []internal.Response {
+	responses := make([]internal.Response, 0, 1)
+	response := executeRequestAndPostScript(ctx, request, vars)
+	responses = append(responses, response)
+	if response.Error != nil || strings.TrimSpace(request.JetterWhile) == "" {
+		return responses
+	}
+
+	maxIterations := request.JetterMaxIterations
+	if maxIterations <= 0 {
+		maxIterations = 1
+	}
+
+	whileCondition := replaceVariablesInString(request.JetterWhile, vars)
+	iteration := 1
+	for {
+		shouldContinue, err := script.EvaluateWhileCondition(whileCondition, response, vars)
+		if err != nil {
+			responses[len(responses)-1].Error = err
+			return responses
+		}
+		if !shouldContinue {
+			return responses
+		}
+
+		if iteration >= maxIterations {
+			if shouldFailOnTimeout(request.JetterOnTimeout) {
+				responses[len(responses)-1].Error = fmt.Errorf("jetter while condition still true after %d iterations", iteration)
+			}
+			return responses
+		}
+
+		if err := sleepWithContext(ctx, request.JetterSleep); err != nil {
+			responses[len(responses)-1].Error = err
+			return responses
+		}
+
+		iteration++
+		response = executeRequestAndPostScript(ctx, request, vars)
+		responses = append(responses, response)
+		if response.Error != nil {
+			return responses
+		}
+	}
+}
+
+func executeRequestAndPostScript(ctx context.Context, request internal.Request, vars map[string]string) internal.Response {
+	evaluatedRequest := request
+	evaluatedRequest.Url = replaceVariablesInString(request.Url, vars)
+	evaluatedRequest.Body = replaceVariablesInString(request.Body, vars)
+
+	evaluatedHeaders := make(map[string]string, len(request.Headers))
+	for key, value := range request.Headers {
+		evaluatedHeaders[key] = replaceVariablesInString(value, vars)
+	}
+	evaluatedRequest.Headers = evaluatedHeaders
+
+	response := ExecuteRequest(ctx, evaluatedRequest)
+	if response.Error != nil {
+		return response
+	}
+
+	postScript := replaceVariablesInString(request.PostScript, vars)
+	if postScript != "" {
+		if err := script.ExecutePostScript(postScript, response, vars); err != nil {
+			response.Error = err
+		}
+	}
+
+	return response
+}
+
+func sleepWithContext(ctx context.Context, sleep time.Duration) error {
+	if sleep <= 0 {
+		return nil
+	}
+
+	timer := time.NewTimer(sleep)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func shouldFailOnTimeout(onTimeout string) bool {
+	if strings.ToLower(strings.TrimSpace(onTimeout)) == "continue" {
+		return false
+	}
+	return true
 }
 
 // ExecuteRequest performs a single HTTP request described by the given internal.Request.

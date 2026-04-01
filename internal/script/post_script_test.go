@@ -46,3 +46,23 @@ func TestExecutePostScript_SupportsConsoleLog(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "status 200 true\n", buffer.String())
 }
+
+func TestEvaluateWhileCondition_ReturnsBooleanFromExpression(t *testing.T) {
+	variables := map[string]string{}
+	response := internal.Response{Status: 200, Body: `{"status":"PENDING"}`}
+
+	shouldContinue, err := EvaluateWhileCondition(`response.body.status != "DONE"`, response, variables)
+
+	assert.NoError(t, err)
+	assert.True(t, shouldContinue)
+}
+
+func TestEvaluateWhileCondition_ReturnsErrorOnInvalidExpression(t *testing.T) {
+	variables := map[string]string{}
+	response := internal.Response{Status: 200, Body: `{"status":"PENDING"}`}
+
+	_, err := EvaluateWhileCondition(`response.body.status !=`, response, variables)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "while-condition execution failed")
+}

@@ -187,6 +187,82 @@ func TestExecuteScenario_MarksExecutionAsFailedWhenPostScriptFails(t *testing.T)
 	assert.True(t, strings.Contains(exec.Responses[0].Error.Error(), "post-script execution failed"))
 }
 
+func TestExecuteScenario_JetterWhileLoopsUntilConditionIsFalse(t *testing.T) {
+	var attempts int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.Header().Set("Content-Type", "application/json")
+		if attempts < 3 {
+			w.WriteHeader(200)
+			_, _ = w.Write([]byte(`{"status":"PENDING"}`))
+			return
+		}
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"status":"DONE"}`))
+	}))
+	defer server.Close()
+
+	s := internal.Scenario{Collection: &internal.Collection{Requests: []internal.Request{{
+		Method:              "GET",
+		Url:                 server.URL,
+		JetterWhile:         `response.body.status != "DONE"`,
+		JetterMaxIterations: 30,
+		JetterSleep:         1 * time.Millisecond,
+		JetterOnTimeout:     "fail",
+	}}}}
+
+	exec := ExecuteScenario(context.Background(), s)
+	assert.False(t, exec.AnyError)
+	assert.Len(t, exec.Responses, 3)
+	assert.Equal(t, 3, attempts)
+	assert.Contains(t, exec.Responses[2].Body, "DONE")
+}
+
+func TestExecuteScenario_JetterWhileTimeoutFailsWhenConfigured(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"status":"PENDING"}`))
+	}))
+	defer server.Close()
+
+	s := internal.Scenario{Collection: &internal.Collection{Requests: []internal.Request{{
+		Method:              "GET",
+		Url:                 server.URL,
+		JetterWhile:         `response.body.status != "DONE"`,
+		JetterMaxIterations: 2,
+		JetterOnTimeout:     "fail",
+	}}}}
+
+	exec := ExecuteScenario(context.Background(), s)
+	assert.True(t, exec.AnyError)
+	assert.Len(t, exec.Responses, 2)
+	assert.Error(t, exec.Responses[1].Error)
+	assert.Contains(t, exec.Responses[1].Error.Error(), "still true")
+}
+
+func TestExecuteScenario_JetterWhileTimeoutContinuesWhenConfigured(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"status":"PENDING"}`))
+	}))
+	defer server.Close()
+
+	s := internal.Scenario{Collection: &internal.Collection{Requests: []internal.Request{{
+		Method:              "GET",
+		Url:                 server.URL,
+		JetterWhile:         `response.body.status != "DONE"`,
+		JetterMaxIterations: 2,
+		JetterOnTimeout:     "continue",
+	}}}}
+
+	exec := ExecuteScenario(context.Background(), s)
+	assert.False(t, exec.AnyError)
+	assert.Len(t, exec.Responses, 2)
+	assert.NoError(t, exec.Responses[1].Error)
+}
+
 func TestExecuteRequest_ErrorOnBadRequest(t *testing.T) {
 	resp := ExecuteRequest(context.Background(), internal.Request{Method: "BAD", Url: ":://"})
 	assert.NotNil(t, resp.Error)

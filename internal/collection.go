@@ -4,18 +4,23 @@ import (
 	"fmt"
 	"github.com/fdrolshagen/jetter/internal/random"
 	"regexp"
+	"time"
 )
 
 // Request represents a single HTTP request definition within a jetter scenario.
 // It defines all necessary details for execution, including the method, target URL,
 // optional headers, and request body content.
 type Request struct {
-	Name       string
-	Method     string
-	Url        string
-	Headers    map[string]string
-	Body       string
-	PostScript string
+	Name                string
+	Method              string
+	Url                 string
+	Headers             map[string]string
+	Body                string
+	PostScript          string
+	JetterWhile         string
+	JetterMaxIterations int
+	JetterSleep         time.Duration
+	JetterOnTimeout     string
 }
 
 // Collection represents a reusable group of HTTP requests that make up
