@@ -11,12 +11,9 @@
   - Output file/format. Default is human-friendly tabular output.  
       Machine-readable options should be available, e.g., `-o json` or `-o yaml`.
 
-### Jetter-Specific Directives (Per-Request or Global)
-- Support global configuration at the top of a `.http` file:  
+### Jetter-Specific Directives (Advanced)
+- Support additional global configuration at the top of a `.http` file (beyond current loop directives):  
   `#@jetter threshold_http_req_failed 0.01`
-- Support per-request configuration:  
-  `#@jetter extract ID $.username`  
-  Variables can then be reused in other requests: `{{$vars("ID")}}`
 
 ### IntelliJ Request Configuration Support
 - IntelliJ `.http` syntax allows using directives like `# @timeout 10`.

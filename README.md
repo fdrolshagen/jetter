@@ -31,15 +31,22 @@ With Jetter, your `.http` files become reusable across development, testing, and
   - 📝 In-place and dynamic variables
   - 📑 Multiple requests per file
   - 🔑 OAuth2 authentication
+  - 📂 Request body file input (`< path/to/body.json`)
+  - 🧪 Post-request JavaScript (`> {% ... %}`)
+  - 🔁 Jetter loop directives (`@jetter.*` / `#@jetter.*`)
 
   **🚫 Not yet supported**
-  - 📂 File input/output
-  - 🧪 JS execution
+  - 📤 Response output to file (`> file.txt`)
+  - 🧩 Full IntelliJ HTTP JS runtime parity
 
 - **Flexible execution modes**
   - ▶️ Run once for quick checks
   - 🔁 Execute continuously for a fixed duration
   - ⚙️ Simulate concurrency with multiple workers
+
+- **Live and persisted observability**
+  - 📊 Live-updating terminal table while requests run
+  - 🧾 Optional request/response logging to file (`--log`)
 
 ---
 
@@ -68,6 +75,7 @@ jetter --file examples/example.http --env examples/http-client.env.json:local
 | `--env`         | `-e`  | Path to the environment file. Format: `-e <file>:<env-key>` |
 | `--duration`    | `-d`  | How long should the load test run (e.g. `30s`, `1m`)        |
 | `--concurrency` | `-c`  | How many workers should run concurrently (default: 1)       |
+| `--log`         |       | Path to newline-delimited JSON request logs                 |
 | `--version`     |       | Print version and exit                                      |
 
 ---
@@ -75,18 +83,35 @@ jetter --file examples/example.http --env examples/http-client.env.json:local
 ## Example .http File
 
 ```text
-### Create User
+@tsid = 0{{$random.hexadecimal(12)}}
+
+### GET /users - get all users
+GET {{URL}}/users
+Authorization: Bearer {{$auth.token("auth-id")}}
+
+### POST /users - create user
 POST {{URL}}/users
 Authorization: Bearer {{$auth.token("auth-id")}}
 Content-Type: application/json
 
-{
-  "username": "username",
-  "email": "foobar@test.com"
-}
+< requests/user.json
 
-### Get All Users
-GET {{URL}}/users
+### GET /users/{tsid} - get a user by id
+GET {{URL}}/users/{{tsid}}
+Authorization: Bearer {{$auth.token("auth-id")}}
+
+> {% client.global.set("NEW_TSID", response.body.id) %}
+
+### GET /status - wait until processing is SUCCESS
+GET {{URL}}/status
+Authorization: Bearer {{$auth.token("auth-id")}}
+#@jetter.while = response.body.status != "SUCCESS"
+#@jetter.maxIterations = 10
+#@jetter.sleep = 2s
+#@jetter.onTimeout = fail
+
+### DELETE /users/{tsid} - delete a user by id
+DELETE {{URL}}/users/{{NEW_TSID}}
 Authorization: Bearer {{$auth.token("auth-id")}}
 ```
 
@@ -169,6 +194,83 @@ Jetter supports **[Oauth2 authentication](https://www.jetbrains.com/help/idea/oa
 
 ---
 
+## Request body from file
+
+You can define request bodies in separate files and reference them from `.http` scenarios using IntelliJ-style file input syntax:
+
+```text
+### Create User
+POST {{URL}}/users
+Authorization: Bearer {{$auth.token("auth-id")}}
+Content-Type: application/json
+
+< requests/user.json
+```
+
+Relative paths are resolved from the `.http` file location.
+
+---
+
+## Post-request JavaScript
+
+Jetter supports post-request scripts with IntelliJ-style syntax:
+
+```text
+> {% client.global.set("TOKEN", response.body.token) %}
+```
+
+Supported runtime features include:
+- `client.global.set("KEY", value)`
+- `client.global.get("KEY")`
+- `console.log(...)`
+- `response.status`, `response.headers`, `response.body`
+
+Variables set with `client.global.set(...)` can be reused in later requests via `{{KEY}}`.
+
+---
+
+## Jetter loop directives
+
+Jetter adds loop directives to repeatedly execute one request until a JS condition evaluates to false.
+
+Supported keys:
+- `@jetter.while`
+- `@jetter.maxIterations`
+- `@jetter.sleep`
+- `@jetter.onTimeout` (`fail` or `continue`)
+
+Example:
+
+```text
+### Poll Status
+GET {{URL}}/status
+Authorization: Bearer {{$auth.token("auth-id")}}
+
+#@jetter.while = response.body.status != "SUCCESS"
+#@jetter.maxIterations = 30
+#@jetter.sleep = 2s
+#@jetter.onTimeout = fail
+```
+
+With `onTimeout = fail`, scenario execution stops after reaching `maxIterations` while the condition is still true.
+
+---
+
+## Logging
+
+Use `--log` to write all request/response events in execution order to a log file.
+
+```sh
+jetter --file examples/example.http --env examples/http-client.env.json:local --log logs/requests.ndjson
+```
+
+Each entry includes:
+- request method, URL, headers, body
+- response status, headers, body, error (if any)
+- start and finish timestamps and duration
+
+---
+
 ## Local Testing
 - See `examples/` for sample `example.http` and `examples/http-client.env.json` files.
 - Use the provided `docker-compose.yml` for local Keycloak and Wiremock setup.
@@ -220,4 +322,3 @@ PRs and feedback are welcome! Please open issues for bugs, feature requests, or 
 
 ## License
 MIT
-

@@ -9,10 +9,7 @@ POST {{URL}}/users
 Authorization: Bearer {{$auth.token("auth-id")}}
 Content-Type: application/json
 
-{
-  "username": "username",
-  "email": "foobar@test.com"
-}
+< requests/user.json
 
 ### GET /users/{tsid} - get a user by id
 GET {{URL}}/users/{{tsid}}
