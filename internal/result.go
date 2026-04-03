@@ -22,11 +22,17 @@ type Execution struct {
 // It contains metadata such as the request name, response status,
 // execution duration, and any associated error.
 type Response struct {
-	Index    int
-	Name     string
-	Status   int
-	Headers  map[string]string
-	Body     string
-	Duration time.Duration
-	Error    error
+	Index          int
+	Name           string
+	Status         int
+	Headers        map[string]string
+	Body           string
+	Duration       time.Duration
+	Error          error
+	RequestMethod  string
+	RequestURL     string
+	RequestHeaders map[string]string
+	RequestBody    string
+	StartedAt      time.Time
+	FinishedAt     time.Time
 }

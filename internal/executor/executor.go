@@ -256,10 +256,18 @@ func ExecuteRequest(ctx context.Context, r internal.Request) internal.Response {
 	ctx, cancel := withDefaultTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	result := internal.Response{Error: nil, Name: r.Name}
+	result := internal.Response{
+		Error:          nil,
+		Name:           r.Name,
+		RequestMethod:  r.Method,
+		RequestURL:     r.Url,
+		RequestHeaders: cloneHeaders(r.Headers),
+		RequestBody:    r.Body,
+	}
 	req, err := http.NewRequestWithContext(ctx, r.Method, r.Url, bytes.NewBuffer([]byte(r.Body)))
 	if err != nil {
 		result.Error = err
+		result.FinishedAt = time.Now()
 		return result
 	}
 
@@ -268,15 +276,18 @@ func ExecuteRequest(ctx context.Context, r internal.Request) internal.Response {
 	}
 
 	start := time.Now()
+	result.StartedAt = start
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		result.Error = err
+		result.FinishedAt = time.Now()
 		return result
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		result.Error = err
+		result.FinishedAt = time.Now()
 		return result
 	}
 	elapsed := time.Since(start)
@@ -293,7 +304,19 @@ func ExecuteRequest(ctx context.Context, r internal.Request) internal.Response {
 	result.Status = resp.StatusCode
 	result.Headers = headers
 	result.Body = string(body)
+	result.FinishedAt = start.Add(elapsed)
 	return result
+}
+
+func cloneHeaders(headers map[string]string) map[string]string {
+	if headers == nil {
+		return map[string]string{}
+	}
+	cloned := make(map[string]string, len(headers))
+	for key, value := range headers {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 // withDefaultTimeout returns a context with the given timeout

@@ -6,6 +6,7 @@ import (
 	"github.com/fdrolshagen/jetter/internal"
 	"github.com/fdrolshagen/jetter/internal/executor"
 	"github.com/fdrolshagen/jetter/internal/inject"
+	"github.com/fdrolshagen/jetter/internal/logger"
 	"github.com/fdrolshagen/jetter/internal/parser"
 	"github.com/fdrolshagen/jetter/internal/reporter"
 	"github.com/spf13/cobra"
@@ -18,6 +19,7 @@ var (
 	concurrency int
 	file        string
 	envPath     string
+	logPath     string
 	showVersion bool
 )
 
@@ -45,6 +47,7 @@ func Execute() {
 	rootCmd.Flags().IntVarP(&concurrency, "concurrency", "c", 1, "Number of concurrent workers")
 	rootCmd.Flags().StringVarP(&file, "file", "f", "", "Path to the .http file")
 	rootCmd.Flags().StringVarP(&envPath, "env", "e", "", "Path to the environment file")
+	rootCmd.Flags().StringVar(&logPath, "log", "", "Path to newline-delimited JSON request logs")
 	rootCmd.MarkFlagRequired("file")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
@@ -87,11 +90,35 @@ func run() int {
 
 	msg = "Running Scenario..."
 	fmt.Printf("%s %s\n", pendingIcon, msg)
+
+	var requestLogger *logger.RequestLogger
+	if logPath != "" {
+		requestLogger, err = logger.NewRequestLogger(logPath)
+		if err != nil {
+			PrintError(fmt.Errorf("failed to initialize logger: %w", err))
+			os.Exit(1)
+		}
+		defer requestLogger.Close()
+	}
+
 	liveReporter := reporter.NewLiveReporter(200 * time.Millisecond)
 	liveReporter.Start()
-	result := executor.SubmitWithResponseCallback(s, liveReporter.AddResponse)
+	callback := func(response internal.Response) {
+		liveReporter.AddResponse(response)
+		if requestLogger != nil {
+			requestLogger.Log(response)
+		}
+	}
+	result := executor.SubmitWithResponseCallback(s, callback)
 	liveReporter.Stop()
 	fmt.Printf("%s %s\n\n", color.GreenString(successIcon), msg)
+
+	if requestLogger != nil {
+		if err := requestLogger.Err(); err != nil {
+			PrintError(fmt.Errorf("failed to write request log: %w", err))
+			result.AnyError = true
+		}
+	}
 
 	if !liveReporter.Enabled() {
 		reporter.Report(result)
